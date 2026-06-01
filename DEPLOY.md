@@ -21,18 +21,25 @@ sudo usermod -aG docker $USER
 
 ---
 
-## 📦 Bước 1: Clone code lên server
+## 📦 Bước 1: Chuẩn bị 3 file deploy (không cần clone repo)
+
+Image đã được pre-build và push lên Docker Hub: https://hub.docker.com/r/hieutech2203/ql-kho-gcc
+
+Chỉ cần **3 file** trên server để chạy: `docker-compose.yml`, `Caddyfile`, `.env`.
 
 ```bash
 sudo mkdir -p /opt/ql-kho-gcc
 sudo chown $USER:$USER /opt/ql-kho-gcc
 cd /opt/ql-kho-gcc
 
-# Clone repo (hoặc rsync/scp từ máy dev)
-git clone <your-repo-url> .
-# Hoặc nếu copy thủ công:
-# scp -r ./ql-kho-gcc user@server:/opt/
+# Tải 3 file từ GitHub repo:
+RAW=https://raw.githubusercontent.com/TranHieu2203/ql-kho-gcc/main
+curl -fsSL $RAW/docker-compose.yml -o docker-compose.yml
+curl -fsSL $RAW/Caddyfile          -o Caddyfile
+curl -fsSL $RAW/.env.example       -o .env.example
 ```
+
+> 💡 **Update phiên bản mới** sau này chỉ cần `docker compose pull && docker compose up -d` — không cần đụng vào file nào.
 
 ---
 
@@ -56,10 +63,14 @@ ADMIN_USERNAME=admin                            # hoặc tùy chỉnh
 
 ---
 
-## 🐳 Bước 3: Build + chạy
+## 🐳 Bước 3: Pull image + chạy
 
 ```bash
-docker compose up -d --build
+# Tải image từ Docker Hub (~334MB, mất 30s-2 phút tùy mạng)
+docker compose pull
+
+# Khởi động
+docker compose up -d
 ```
 
 Theo dõi log:
@@ -68,14 +79,14 @@ docker compose logs -f
 ```
 
 Bạn sẽ thấy theo thứ tự:
-1. `app` build (~2-5 phút lần đầu)
+1. `app` pull image (~30s-2 phút lần đầu, lần sau dùng cache)
 2. `[entrypoint] prisma migrate deploy...` — apply schema
 3. `[bootstrap-admin] OK — tạo admin` (nếu lần đầu)
 4. `[entrypoint] Starting Next.js server on port 3000...`
 5. `caddy` start, gọi Let's Encrypt ACME
 6. `certificate obtained successfully` — cert đã cấp
 
-Tổng thời gian lần đầu: ~3–6 phút.
+Tổng thời gian lần đầu: ~1–3 phút (nhanh hơn build vì dùng image sẵn).
 
 ---
 
@@ -185,7 +196,8 @@ sudo ufw --force enable
 | Xem log app | `docker compose logs -f app` |
 | Xem log Caddy/HTTPS | `docker compose logs -f caddy` |
 | Restart app | `docker compose restart app` |
-| Pull code mới + rebuild | `git pull && docker compose up -d --build` |
+| Update lên phiên bản mới | `docker compose pull && docker compose up -d` |
+| Pin phiên bản cụ thể | Sửa `image:` trong `docker-compose.yml` từ `:latest` → `:v1.0.0`, rồi `docker compose up -d` |
 | Backup tay | `docker compose exec app sh -c "sqlite3 /app/data/app.db '.backup /app/data/manual-$(date +%F).db'"` |
 | Vào shell container | `docker compose exec app sh` |
 | Vào Prisma Studio (dev only) | `docker compose exec app npx prisma studio --port 5555` rồi tunnel SSH |

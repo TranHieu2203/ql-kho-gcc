@@ -1,23 +1,26 @@
-# ql-kho-gcc — production deploy
+# ql-kho-gcc — production deploy (image từ Docker Hub)
 #
-# Cách dùng:
-#   1. Copy .env.example → .env và điền DOMAIN, ADMIN_INITIAL_PASSWORD, ACME_EMAIL
-#   2. docker compose up -d --build
-#   3. Lần đầu cấp TLS sẽ mất 20-60 giây, theo dõi:
-#      docker compose logs -f caddy
-#   4. Sau lần chạy đầu thành công, xoá ADMIN_INITIAL_PASSWORD trong .env và:
-#      docker compose up -d
+# Cách dùng trên server production:
+#   1. Tạo thư mục: mkdir -p /opt/ql-kho-gcc && cd /opt/ql-kho-gcc
+#   2. Copy 3 file từ repo về: docker-compose.yml + Caddyfile + .env.example
+#      (KHÔNG cần clone source code)
+#   3. cp .env.example .env và điền DOMAIN, ADMIN_INITIAL_PASSWORD, ACME_EMAIL, CRON_SECRET
+#   4. docker compose pull && docker compose up -d
+#   5. Theo dõi: docker compose logs -f
+#
+# Update phiên bản mới: docker compose pull && docker compose up -d
+#
+# Image: https://hub.docker.com/r/hieutech2203/ql-kho-gcc
 #
 # Backup SQLite:
 #   docker compose exec app sh -c "sqlite3 /app/data/app.db .dump" > backup-$(date +%F).sql
-#   Hoặc đơn giản: copy ./data/app.db ra ngoài (cẩn thận khi app đang chạy → dùng .backup)
+#   Hoặc: copy ./data/app.db ra ngoài (cẩn thận khi app đang chạy → dùng .backup)
 
 services:
   app:
-    build:
-      context: ./app-code
-      dockerfile: Dockerfile
-    image: ql-kho-gcc:latest
+    # Image pre-built từ Docker Hub — KHÔNG build local
+    # Đổi tag :latest → :v1.0.0 (hoặc version cụ thể) để pin phiên bản
+    image: hieutech2203/ql-kho-gcc:latest
     container_name: ql-kho-app
     restart: unless-stopped
     environment:
