@@ -43,9 +43,9 @@ export default async function DashboardPage() {
     if (s < p.lowStockThreshold) lowStockCount++;
   }
 
-  // Recent receipts
+  // Recent receipts (loại ADJUSTMENT khỏi danh sách hoạt động — chỉ hiển thị ở audit log)
   const recent = await prisma.receipt.findMany({
-    where: { warehouseId: { in: whIds } },
+    where: { warehouseId: { in: whIds }, type: { in: ['INBOUND', 'OUTBOUND', 'TRANSFER'] } },
     orderBy: { createdAt: 'desc' },
     take: 8,
     include: {
