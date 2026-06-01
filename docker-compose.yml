@@ -1,0 +1,75 @@
+# ql-kho-gcc — production deploy
+#
+# Cách dùng:
+#   1. Copy .env.example → .env và điền DOMAIN, ADMIN_INITIAL_PASSWORD, ACME_EMAIL
+#   2. docker compose up -d --build
+#   3. Lần đầu cấp TLS sẽ mất 20-60 giây, theo dõi:
+#      docker compose logs -f caddy
+#   4. Sau lần chạy đầu thành công, xoá ADMIN_INITIAL_PASSWORD trong .env và:
+#      docker compose up -d
+#
+# Backup SQLite:
+#   docker compose exec app sh -c "sqlite3 /app/data/app.db .dump" > backup-$(date +%F).sql
+#   Hoặc đơn giản: copy ./data/app.db ra ngoài (cẩn thận khi app đang chạy → dùng .backup)
+
+services:
+  app:
+    build:
+      context: ./app-code
+      dockerfile: Dockerfile
+    image: ql-kho-gcc:latest
+    container_name: ql-kho-app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # SQLite ở volume mount — persist qua restart/rebuild
+      DATABASE_URL: file:/app/data/app.db
+      # Bật HSTS khi đã HTTPS (Caddy auto cấp Let's Encrypt)
+      ENABLE_HSTS: "1"
+      # Lần chạy đầu: set qua .env. Sau khi admin đã được tạo, xoá đi.
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-Quản trị viên}
+      # Token cho /api/cron/backup (>= 16 ký tự). Bỏ trống → endpoint trả 503.
+      CRON_SECRET: ${CRON_SECRET:-}
+    volumes:
+      - ./data:/app/data
+    networks:
+      - kho-net
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: ql-kho-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - kho-net
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  kho-net:
+    driver: bridge

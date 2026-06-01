@@ -1,0 +1,165 @@
+// Prisma schema — ql-kho-gcc
+// Sync with _bmad-output/planning-artifacts/architecture/ARCHITECTURE.md §4
+
+generator client {
+  provider      = "prisma-client-js"
+  // native: dev (Windows/Mac/Linux glibc). linux-musl-openssl-3.0.x: production Alpine Docker.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  fullName     String
+  role         String   @default("WAREHOUSE_STAFF") // ADMIN | WAREHOUSE_STAFF
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions       Session[]
+  warehouseLinks UserWarehouse[]
+  receiptsCreated Receipt[]
+  auditLogs       AuditLog[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userLinks   UserWarehouse[]
+  receipts    Receipt[]
+  transfersFrom Receipt[] @relation("TransferFrom")
+  transfersTo   Receipt[] @relation("TransferTo")
+  movements   StockMovement[]
+}
+
+model UserWarehouse {
+  userId      String
+  warehouseId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  @@id([userId, warehouseId])
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  sku               String   @unique
+  fullName          String
+  brand             String
+  size              String
+  pattern           String
+  defaultUnit       String   @default("BO") // BO | CHIEC
+  lowStockThreshold Int      @default(10)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  receiptLines ReceiptLine[]
+  movements    StockMovement[]
+}
+
+model Receipt {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  type              String   // INBOUND | OUTBOUND | TRANSFER | ADJUSTMENT
+  status            String   @default("CONFIRMED") // DRAFT | CONFIRMED | IN_TRANSIT | CANCELLED
+  warehouseId       String
+  fromWarehouseId   String?
+  toWarehouseId     String?
+  date              DateTime
+  customerOrPartner String?
+  note              String?
+  createdById       String
+  clientRequestId   String?  @unique
+  version           Int      @default(1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  confirmedAt       DateTime?
+  cancelledAt       DateTime?
+
+  warehouse     Warehouse  @relation(fields: [warehouseId], references: [id])
+  fromWarehouse Warehouse? @relation("TransferFrom", fields: [fromWarehouseId], references: [id])
+  toWarehouse   Warehouse? @relation("TransferTo", fields: [toWarehouseId], references: [id])
+  createdBy     User       @relation(fields: [createdById], references: [id])
+  lines         ReceiptLine[]
+  movements     StockMovement[]
+
+  @@index([type, warehouseId, date])
+  @@index([code])
+}
+
+model ReceiptLine {
+  id        String  @id @default(cuid())
+  receiptId String
+  productId String
+  unit      String  // BO | CHIEC
+  quantity  Int
+  lineNote  String?
+
+  receipt Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([receiptId])
+  @@index([productId])
+}
+
+model StockMovement {
+  id          String   @id @default(cuid())
+  warehouseId String
+  productId   String
+  unit        String
+  qtyDelta    Int
+  source      String   // RECEIPT | ADJUSTMENT | INITIAL_IMPORT
+  sourceId    String?
+  occurredAt  DateTime
+  recordedAt  DateTime @default(now())
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  product   Product   @relation(fields: [productId], references: [id])
+  receipt   Receipt?  @relation(fields: [sourceId], references: [id])
+
+  @@index([warehouseId, productId, occurredAt])
+  @@index([sourceId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  before     String?  // JSON-stringified
+  after      String?  // JSON-stringified
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
