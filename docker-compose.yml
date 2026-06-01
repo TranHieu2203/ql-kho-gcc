@@ -1,78 +1,71 @@
-# ql-kho-gcc — production deploy (image từ Docker Hub)
+# ql-kho-gcc — production deploy (image từ Docker Hub, dùng reverse proxy có sẵn)
 #
-# Cách dùng trên server production:
-#   1. Tạo thư mục: mkdir -p /opt/ql-kho-gcc && cd /opt/ql-kho-gcc
-#   2. Copy 3 file từ repo về: docker-compose.yml + Caddyfile + .env.example
-#      (KHÔNG cần clone source code)
-#   3. cp .env.example .env và điền DOMAIN, ADMIN_INITIAL_PASSWORD, ACME_EMAIL, CRON_SECRET
+# Phiên bản này KHÔNG dùng Caddy — bạn dùng reverse proxy có sẵn
+# (Nginx Proxy Manager / nginx / Traefik / Cloudflare Tunnel).
+# App expose port 3000 trên loopback (127.0.0.1) — chỉ reverse proxy
+# cùng host gọi được, internet không vào trực tiếp.
+#
+# Cách dùng:
+#   1. mkdir -p /opt/ql-kho-gcc && cd /opt/ql-kho-gcc
+#   2. curl -fsSL https://raw.githubusercontent.com/TranHieu2203/ql-kho-gcc/main/docker-compose.yml -o docker-compose.yml
+#      curl -fsSL https://raw.githubusercontent.com/TranHieu2203/ql-kho-gcc/main/.env.example       -o .env.example
+#   3. cp .env.example .env && nano .env  (điền ADMIN_INITIAL_PASSWORD)
 #   4. docker compose pull && docker compose up -d
-#   5. Theo dõi: docker compose logs -f
+#   5. Trong Nginx Proxy Manager UI:
+#        - Add Proxy Host
+#        - Domain: ql-kho.example.com
+#        - Scheme: http
+#        - Forward Hostname/IP: 127.0.0.1     (nếu NPM chạy bare metal)
+#                                              hoặc host.docker.internal (Linux: cần extra_hosts)
+#                                              hoặc IP host
+#        - Forward Port: 3000
+#        - Bật SSL → Force SSL + HSTS + Request new SSL cert (Let's Encrypt)
 #
-# Update phiên bản mới: docker compose pull && docker compose up -d
+# Nếu NPM chạy trong Docker và muốn dùng Docker DNS thay vì port host:
+#   - Bỏ block `ports:` dưới
+#   - Mở comment block `networks:` ở cuối + uncomment `- proxy-net` trong app
+#   - Tạo external network: docker network create proxy-net
+#   - Cả NPM container và app container phải cùng network 'proxy-net'
+#   - Trong NPM forward hostname: ql-kho-app (Docker DNS), port: 3000
 #
 # Image: https://hub.docker.com/r/hieutech2203/ql-kho-gcc
-#
-# Backup SQLite:
-#   docker compose exec app sh -c "sqlite3 /app/data/app.db .dump" > backup-$(date +%F).sql
-#   Hoặc: copy ./data/app.db ra ngoài (cẩn thận khi app đang chạy → dùng .backup)
 
 services:
   app:
-    # Image pre-built từ Docker Hub — KHÔNG build local
-    # Đổi tag :latest → :v1.0.0 (hoặc version cụ thể) để pin phiên bản
     image: hieutech2203/ql-kho-gcc:latest
     container_name: ql-kho-app
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
-      # SQLite ở volume mount — persist qua restart/rebuild
       DATABASE_URL: file:/app/data/app.db
-      # Bật HSTS khi đã HTTPS (Caddy auto cấp Let's Encrypt)
+      # Bật HSTS header (reverse proxy đã có HTTPS qua Let's Encrypt rồi)
       ENABLE_HSTS: "1"
-      # Lần chạy đầu: set qua .env. Sau khi admin đã được tạo, xoá đi.
+      # Lần chạy đầu — sau khi tạo admin xong, xoá biến này khỏi .env
       ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-Quản trị viên}
-      # Token cho /api/cron/backup (>= 16 ký tự). Bỏ trống → endpoint trả 503.
+      # Token cho /api/cron/backup (>= 16 ký tự)
       CRON_SECRET: ${CRON_SECRET:-}
     volumes:
       - ./data:/app/data
-    networks:
-      - kho-net
-    expose:
-      - "3000"
+    ports:
+      # Bind loopback only — chỉ NPM/reverse proxy trên CÙNG host gọi được.
+      # Internet KHÔNG vào trực tiếp được port 3000 → an toàn.
+      # Đổi thành "3000:3000" nếu NPM ở server khác (cần firewall).
+      - "127.0.0.1:3000:3000"
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
+    # --- Tùy chọn: dùng Docker DNS với NPM container ---
+    # networks:
+    #   - proxy-net
 
-  caddy:
-    image: caddy:2-alpine
-    container_name: ql-kho-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      DOMAIN: ${DOMAIN}
-      ACME_EMAIL: ${ACME_EMAIL}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      app:
-        condition: service_healthy
-    networks:
-      - kho-net
-
-volumes:
-  caddy_data:
-  caddy_config:
-
-networks:
-  kho-net:
-    driver: bridge
+# --- Uncomment nếu NPM container muốn truy cập qua Docker DNS ---
+# networks:
+#   proxy-net:
+#     external: true
+#     name: proxy-net    # tên network NPM dùng (sửa tên theo NPM của bạn)
