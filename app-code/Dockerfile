@@ -33,7 +33,9 @@ RUN addgroup -g 1001 -S nodejs && adduser -u 1001 -S -G nodejs nextjs
 #  - openssl: prisma engine
 #  - tini:    PID 1 signal handling
 #  - wget:    healthcheck
-RUN apk add --no-cache libc6-compat openssl tini wget
+#  - su-exec: drop privilege từ root xuống nextjs (cho phép entrypoint
+#             tự fix permission của volume bind mount lúc start)
+RUN apk add --no-cache libc6-compat openssl tini wget su-exec
 
 # Standalone build → copy chỉ runtime cần thiết (server.js + .next + lib min)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -59,7 +61,9 @@ RUN chmod +x docker-entrypoint.sh
 RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
 VOLUME ["/app/data"]
 
-USER nextjs
+# LƯU Ý: KHÔNG set USER nextjs ở đây — entrypoint phải start là root để
+# có thể chown /app/data (volume bind mount thường có owner root từ host).
+# Sau khi chown xong, entrypoint tự dùng su-exec drop privilege sang nextjs.
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
