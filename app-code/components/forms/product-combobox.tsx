@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronsUpDown, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -65,9 +66,13 @@ export function ProductCombobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [focusIdx, setFocusIdx] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const selected = useMemo(() => products.find((p) => p.id === value), [products, value]);
 
@@ -85,14 +90,49 @@ export function ProductCombobox({
   // Reset focus index khi results thay đổi
   useEffect(() => { setFocusIdx(0); }, [query, open]);
 
-  // Click outside → close
+  // Click outside → close (check both wrap và listRef vì dropdown ở portal)
   useEffect(() => {
     if (!open) return;
     function onDocClick(e: MouseEvent) {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (wrapRef.current?.contains(t)) return;
+      if (listRef.current?.contains(t)) return;
+      setOpen(false);
     }
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
+  }, [open]);
+
+  // Position popover qua getBoundingClientRect (escape khỏi overflow cha)
+  useLayoutEffect(() => {
+    if (!open) return;
+    function reposition() {
+      const trigger = wrapRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const viewportH = window.innerHeight;
+      const spaceBelow = viewportH - rect.bottom;
+      const spaceAbove = rect.top;
+      const desired = 288; // ~max-h-72 (18rem)
+      // Mở xuống dưới nếu đủ chỗ; nếu không, mở lên trên
+      const openUp = spaceBelow < 200 && spaceAbove > spaceBelow;
+      setPopoverStyle({
+        position: 'fixed',
+        left: rect.left,
+        top: openUp ? undefined : rect.bottom + 4,
+        bottom: openUp ? viewportH - rect.top + 4 : undefined,
+        width: rect.width,
+        maxHeight: Math.min(desired, openUp ? spaceAbove - 8 : spaceBelow - 8),
+        zIndex: 9999
+      });
+    }
+    reposition();
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
   }, [open]);
 
   // Auto-scroll focused item vào view
@@ -193,12 +233,13 @@ export function ProductCombobox({
         </div>
       )}
 
-      {open && (
+      {open && mounted && createPortal(
         <div
           ref={listRef}
           id={listId}
           role="listbox"
-          className="absolute z-50 mt-1 left-0 right-0 max-h-72 overflow-y-auto rounded-md border bg-card shadow-lg"
+          style={popoverStyle}
+          className="overflow-y-auto rounded-md border bg-card shadow-lg"
         >
           {results.length === 0 ? (
             <div className="px-3 py-6 text-sm text-center text-muted-foreground">
@@ -248,7 +289,8 @@ export function ProductCombobox({
               Còn nhiều kết quả — thu hẹp tìm kiếm để xem tiếp.
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
