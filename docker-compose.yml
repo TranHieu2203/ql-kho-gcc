@@ -26,6 +26,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      # Timezone — default Asia/Ho_Chi_Minh (UTC+7). Override nếu cần.
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
       DATABASE_URL: file:/app/data/app.db
       ENABLE_HSTS: "1"
       ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}

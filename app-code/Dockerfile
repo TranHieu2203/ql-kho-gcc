@@ -35,7 +35,11 @@ RUN addgroup -g 1001 -S nodejs && adduser -u 1001 -S -G nodejs nextjs
 #  - wget:    healthcheck
 #  - su-exec: drop privilege từ root xuống nextjs (cho phép entrypoint
 #             tự fix permission của volume bind mount lúc start)
-RUN apk add --no-cache libc6-compat openssl tini wget su-exec
+#  - tzdata:  cho phép set TZ ở runtime (vd: Asia/Ho_Chi_Minh)
+RUN apk add --no-cache libc6-compat openssl tini wget su-exec tzdata
+
+# Default timezone VN (UTC+7). Override qua env TZ trong docker-compose.
+ENV TZ=Asia/Ho_Chi_Minh
 
 # Standalone build → copy chỉ runtime cần thiết (server.js + .next + lib min)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
