@@ -1,32 +1,20 @@
-# ql-kho-gcc — production deploy (image từ Docker Hub, dùng reverse proxy có sẵn)
-#
-# Phiên bản này KHÔNG dùng Caddy — bạn dùng reverse proxy có sẵn
-# (Nginx Proxy Manager / nginx / Traefik / Cloudflare Tunnel).
-# App expose port 3000 trên loopback (127.0.0.1) — chỉ reverse proxy
-# cùng host gọi được, internet không vào trực tiếp.
+# ql-kho-gcc — production deploy (image từ Docker Hub)
 #
 # Cách dùng:
 #   1. mkdir -p /opt/ql-kho-gcc && cd /opt/ql-kho-gcc
 #   2. curl -fsSL https://raw.githubusercontent.com/TranHieu2203/ql-kho-gcc/main/docker-compose.yml -o docker-compose.yml
 #      curl -fsSL https://raw.githubusercontent.com/TranHieu2203/ql-kho-gcc/main/.env.example       -o .env.example
-#   3. cp .env.example .env && nano .env  (điền ADMIN_INITIAL_PASSWORD)
+#   3. cp .env.example .env && nano .env
+#        - ADMIN_INITIAL_PASSWORD: password admin lần đầu
+#        - CRON_SECRET: token cho backup cron (sinh: openssl rand -hex 24)
+#        - NPM_NETWORK: tên Docker network của Nginx Proxy Manager
+#          (xem: docker inspect <npm-container> -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}')
+#          Để mặc định `bridge` nếu KHÔNG dùng NPM trong Docker.
 #   4. docker compose pull && docker compose up -d
-#   5. Trong Nginx Proxy Manager UI:
-#        - Add Proxy Host
-#        - Domain: ql-kho.example.com
-#        - Scheme: http
-#        - Forward Hostname/IP: 127.0.0.1     (nếu NPM chạy bare metal)
-#                                              hoặc host.docker.internal (Linux: cần extra_hosts)
-#                                              hoặc IP host
+#   5. Cấu hình NPM proxy host:
+#        - Forward Hostname: ql-kho-app
 #        - Forward Port: 3000
-#        - Bật SSL → Force SSL + HSTS + Request new SSL cert (Let's Encrypt)
-#
-# Nếu NPM chạy trong Docker và muốn dùng Docker DNS thay vì port host:
-#   - Bỏ block `ports:` dưới
-#   - Mở comment block `networks:` ở cuối + uncomment `- proxy-net` trong app
-#   - Tạo external network: docker network create proxy-net
-#   - Cả NPM container và app container phải cùng network 'proxy-net'
-#   - Trong NPM forward hostname: ql-kho-app (Docker DNS), port: 3000
+#        - Scheme: http (NPM termina SSL bằng Let's Encrypt)
 #
 # Image: https://hub.docker.com/r/hieutech2203/ql-kho-gcc
 
@@ -39,20 +27,19 @@ services:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: file:/app/data/app.db
-      # Bật HSTS header (reverse proxy đã có HTTPS qua Let's Encrypt rồi)
       ENABLE_HSTS: "1"
-      # Lần chạy đầu — sau khi tạo admin xong, xoá biến này khỏi .env
       ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-Quản trị viên}
-      # Token cho /api/cron/backup (>= 16 ký tự)
       CRON_SECRET: ${CRON_SECRET:-}
     volumes:
       - ./data:/app/data
+    networks:
+      - default     # internal network của project (cho healthcheck nội bộ)
+      - proxy       # network chia sẻ với reverse proxy (NPM/Traefik/nginx)
     ports:
-      # Bind loopback only — chỉ NPM/reverse proxy trên CÙNG host gọi được.
-      # Internet KHÔNG vào trực tiếp được port 3000 → an toàn.
-      # Đổi thành "3000:3000" nếu NPM ở server khác (cần firewall).
+      # Bind loopback only — chỉ reverse proxy trên CÙNG host gọi được.
+      # Có thể bỏ block này nếu chỉ dùng Docker DNS qua network proxy.
       - "127.0.0.1:3000:3000"
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
@@ -60,12 +47,13 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-    # --- Tùy chọn: dùng Docker DNS với NPM container ---
-    # networks:
-    #   - proxy-net
 
-# --- Uncomment nếu NPM container muốn truy cập qua Docker DNS ---
-# networks:
-#   proxy-net:
-#     external: true
-#     name: proxy-net    # tên network NPM dùng (sửa tên theo NPM của bạn)
+networks:
+  default:
+    name: ql-kho_default
+  proxy:
+    # Network bên ngoài (đã tồn tại) để chia sẻ với reverse proxy container.
+    # Mặc định `bridge` (Docker tự có) — an toàn cho user KHÔNG dùng NPM Docker.
+    # User dùng NPM Docker: set NPM_NETWORK=<tên-network-NPM> trong .env.
+    external: true
+    name: ${NPM_NETWORK:-bridge}
