@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Trash2, Plus } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { ProductCombobox } from './product-combobox';
 
-type Product = { id: string; sku: string; fullName: string; defaultUnit: string };
+type Product = { id: string; sku: string; fullName: string; brand: string; size: string; pattern: string; defaultUnit: string };
 type Warehouse = { id: string; code: string; name: string };
 type Line = { productId: string; unit: 'BO' | 'CHIEC'; quantity: number; lineNote?: string };
 
@@ -56,10 +57,7 @@ export function ReceiptForm({ type, products, warehouses, defaultWarehouseId, ac
   const updateLine = (idx: number, patch: Partial<Line>) =>
     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
 
-  function onSelectProduct(idx: number, productId: string) {
-    const p = products.find((x) => x.id === productId);
-    updateLine(idx, { productId, unit: (p?.defaultUnit as 'BO' | 'CHIEC') ?? 'BO' });
-  }
+  // (onSelectProduct removed — combobox onChange now handles product + unit in 1 call)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -183,18 +181,14 @@ export function ReceiptForm({ type, products, warehouses, defaultWarehouseId, ac
             <div key={idx} className="p-4 grid md:grid-cols-[1fr_120px_120px_auto] gap-3 items-end">
               <div className="space-y-1.5">
                 <Label htmlFor={`product-${idx}`}>Sản phẩm <span className="text-danger">*</span></Label>
-                <select
-                  id={`product-${idx}`}
+                <ProductCombobox
+                  inputId={`product-${idx}`}
+                  products={products}
                   value={l.productId}
-                  onChange={(e) => onSelectProduct(idx, e.target.value)}
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm font-mono"
+                  onChange={(id, p) => updateLine(idx, { productId: id, unit: (p?.defaultUnit as 'BO' | 'CHIEC') ?? l.unit })}
                   required
-                >
-                  <option value="">— Chọn —</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>{p.sku}</option>
-                  ))}
-                </select>
+                  ariaLabel={`Sản phẩm dòng ${idx + 1}`}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor={`qty-${idx}`}>Số lượng <span className="text-danger">*</span></Label>
