@@ -1,6 +1,8 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useTransition } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 import { updateSettings } from './actions';
 
@@ -17,8 +19,8 @@ export function SettingsForm({ settings }: { settings: Record<string, string> })
   }
 
   return (
-    <form action={action} className="space-y-4">
-      <div className="space-y-2">
+    <form action={action} className="space-y-6">
+      <section className="space-y-2">
         <div className="text-sm font-medium">Chính sách xuất quá tồn</div>
         <div className="space-y-2">
           <label className="flex items-start gap-2 cursor-pointer">
@@ -48,7 +50,67 @@ export function SettingsForm({ settings }: { settings: Record<string, string> })
             </div>
           </label>
         </div>
-      </div>
+      </section>
+
+      <section className="space-y-3 pt-4 border-t">
+        <div>
+          <div className="text-sm font-semibold">Thông tin công ty (in trên phiếu xuất / biên bản giao hàng)</div>
+          <p className="text-xs text-muted-foreground mt-1">Các trường này hiển thị ở phần đầu PDF phiếu xuất kho. Để trống nếu không in.</p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="company_name">Tên công ty</Label>
+          <Input
+            id="company_name"
+            name="company_name"
+            defaultValue={settings.company_name ?? ''}
+            placeholder="VD: CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ GCC"
+            maxLength={256}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="company_address">Địa chỉ công ty</Label>
+          <Input
+            id="company_address"
+            name="company_address"
+            defaultValue={settings.company_address ?? ''}
+            placeholder="VD: Số 10, Đường DX3, KĐT Đặng Xá, Xã Thuận An, Thành phố Hà Nội"
+            maxLength={512}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="company_bank">Tài khoản ngân hàng</Label>
+          <Input
+            id="company_bank"
+            name="company_bank"
+            defaultValue={settings.company_bank ?? ''}
+            placeholder="VD: 1159266668 Ngân hàng ACB - chi nhánh Gia Lâm, Hà Nội"
+            maxLength={256}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="company_phone">Số điện thoại (tuỳ chọn)</Label>
+          <Input
+            id="company_phone"
+            name="company_phone"
+            defaultValue={settings.company_phone ?? ''}
+            placeholder="VD: 024 1234 5678"
+            maxLength={64}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="outbound_receipt_prefix">Tiền tố mã phiếu xuất khi in (tuỳ chọn)</Label>
+          <Input
+            id="outbound_receipt_prefix"
+            name="outbound_receipt_prefix"
+            defaultValue={settings.outbound_receipt_prefix ?? ''}
+            placeholder="VD: PX (để chuyển OUT-2026-0001 → PX260001 khi in)"
+            maxLength={8}
+          />
+          <p className="text-xs text-muted-foreground">
+            Để trống → in mã gốc OUT-YYYY-NNNN. Nếu nhập (vd: <code className="font-mono">PX</code>), mã in trên PDF sẽ thành <code className="font-mono">PXYYMMDD</code> theo ngày phiếu.
+          </p>
+        </div>
+      </section>
 
       <Button type="submit" disabled={pending}>{pending ? 'Đang lưu...' : 'Lưu cấu hình'}</Button>
     </form>

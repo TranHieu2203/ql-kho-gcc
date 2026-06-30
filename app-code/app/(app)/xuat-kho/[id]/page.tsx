@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Pencil } from 'lucide-react';
 import { prisma } from '@/lib/db/prisma';
 import { validateRequest } from '@/lib/auth/lucia';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { ReceiptActions } from '@/components/receipts/receipt-actions';
 import { formatDate, formatDateTime, formatNumber } from '@/lib/utils';
 
@@ -31,7 +32,14 @@ export default async function OutboundDetailPage({ params }: { params: { id: str
           <h1 className="text-2xl font-bold font-mono">{r.code}</h1>
           <p className="text-sm text-muted-foreground mt-1">Phiếu xuất · {r.warehouse.name} · {formatDate(r.date)}</p>
         </div>
-        <ReceiptActions receiptId={r.id} receiptCode={r.code} type="OUTBOUND" isAdmin={user?.role === 'ADMIN'} />
+        <div className="flex gap-2 items-center">
+          <Button asChild variant="outline">
+            <Link href={`/xuat-kho/${r.id}/sua`}>
+              <Pencil className="w-4 h-4" />Sửa phiếu
+            </Link>
+          </Button>
+          <ReceiptActions receiptId={r.id} receiptCode={r.code} type="OUTBOUND" isAdmin={user?.role === 'ADMIN'} />
+        </div>
       </div>
       <Card>
         <CardHeader><CardTitle>Thông tin chung</CardTitle></CardHeader>
@@ -39,8 +47,12 @@ export default async function OutboundDetailPage({ params }: { params: { id: str
           <div><span className="text-muted-foreground">Kho:</span> <span className="ml-2">{r.warehouse.name}</span></div>
           <div><span className="text-muted-foreground">Ngày:</span> <span className="ml-2">{formatDate(r.date)}</span></div>
           <div><span className="text-muted-foreground">Khách hàng:</span> <span className="ml-2">{r.customerOrPartner ?? '—'}</span></div>
+          <div><span className="text-muted-foreground">Điện thoại:</span> <span className="ml-2">{r.customerPhone ?? '—'}</span></div>
+          {r.customerAddress && (
+            <div className="md:col-span-2"><span className="text-muted-foreground">Địa chỉ:</span> <span className="ml-2">{r.customerAddress}</span></div>
+          )}
           <div><span className="text-muted-foreground">Người tạo:</span> <span className="ml-2">{r.createdBy.fullName}</span></div>
-          <div className="md:col-span-2"><span className="text-muted-foreground">Tạo lúc:</span> <span className="ml-2">{formatDateTime(r.createdAt)}</span></div>
+          <div><span className="text-muted-foreground">Tạo lúc:</span> <span className="ml-2">{formatDateTime(r.createdAt)}</span></div>
           {r.note && <div className="md:col-span-2"><span className="text-muted-foreground">Ghi chú:</span> <span className="ml-2">{r.note}</span></div>}
         </CardContent>
       </Card>

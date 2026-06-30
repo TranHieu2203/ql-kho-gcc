@@ -14,6 +14,7 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: { fontFamily: 'Roboto', fontSize: 10, padding: 40, paddingBottom: 60, color: '#1B1F26' },
+  // Legacy header (INBOUND / TRANSFER / ADJUSTMENT)
   header: { marginBottom: 14, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#1E5FB4', borderBottomStyle: 'solid' },
   brand: { fontSize: 11, color: '#1E5FB4', fontWeight: 700 },
   title: { fontSize: 18, fontWeight: 700, marginTop: 4 },
@@ -52,7 +53,32 @@ const styles = StyleSheet.create({
     borderTopColor: '#E2E5EB',
     borderTopStyle: 'solid',
     paddingTop: 6
-  }
+  },
+
+  // Outbound "Biên bản giao nhận" layout
+  bbCompany: { fontSize: 14, fontWeight: 700, textAlign: 'center' },
+  bbAddress: { fontSize: 10, textAlign: 'center', marginTop: 4 },
+  bbBank: { fontSize: 10, textAlign: 'center', marginTop: 2 },
+  bbTitle: { fontSize: 14, fontWeight: 700, textAlign: 'center', marginTop: 14 },
+  bbMetaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+  bbMetaCol: { flexDirection: 'column' },
+  bbMetaLine: { fontSize: 11, marginTop: 2 },
+  bbTable: { marginTop: 16, borderWidth: 1, borderColor: '#000', borderStyle: 'solid' },
+  bbTr: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', borderBottomStyle: 'solid', minHeight: 32 },
+  bbTrLast: { flexDirection: 'row', minHeight: 32 },
+  bbTh: { padding: 8, fontSize: 11, fontWeight: 700, textAlign: 'center', borderRightWidth: 1, borderRightColor: '#000', borderRightStyle: 'solid' },
+  bbThLast: { padding: 8, fontSize: 11, fontWeight: 700, textAlign: 'center' },
+  bbTd: { padding: 6, fontSize: 11, borderRightWidth: 1, borderRightColor: '#000', borderRightStyle: 'solid', justifyContent: 'center' },
+  bbTdLast: { padding: 6, fontSize: 11, justifyContent: 'center' },
+  bbColStt: { width: '8%', textAlign: 'center' },
+  bbColSku: { width: '22%' },
+  bbColName: { width: '38%' },
+  bbColUnit: { width: '14%', textAlign: 'center' },
+  bbColQty: { width: '18%', textAlign: 'center' },
+  bbTotalCell: { padding: 6, fontSize: 11, fontWeight: 700, textAlign: 'center', borderRightWidth: 1, borderRightColor: '#000', borderRightStyle: 'solid', justifyContent: 'center' },
+  bbSignRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 30 },
+  bbSignCell: { width: '30%', alignItems: 'center' },
+  bbSignLabel: { fontSize: 11, fontWeight: 400 }
 });
 
 const TYPE_LABEL: Record<string, string> = {
@@ -70,16 +96,99 @@ export type ReceiptPdfData = {
   fromWarehouseName?: string;
   toWarehouseName?: string;
   customerOrPartner?: string | null;
+  customerAddress?: string | null;
+  customerPhone?: string | null;
   note?: string | null;
   createdByName: string;
   status: string;
   lines: { sku: string; productName: string; unit: string; quantity: number; lineNote?: string | null }[];
+  company?: {
+    name?: string;
+    address?: string;
+    bank?: string;
+    phone?: string;
+  };
+  displayCode?: string;   // mã phiếu hiển thị (vd PX080526) — tuỳ chọn override
 };
 
 function formatDateVN(d: Date) {
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+/** "Biên bản giao nhận hàng hoá" layout dùng cho OUTBOUND (theo template GCC) */
+function OutboundBienBanDoc({ data }: { data: ReceiptPdfData }) {
+  const total = data.lines.reduce((s, l) => s + l.quantity, 0);
+  const c = data.company ?? {};
+  const codeShown = data.displayCode || data.code;
+  // Đơn vị tính tổng: nếu mọi line cùng đơn vị thì dùng đơn vị đó, ngược lại để trống
+  const allUnits = Array.from(new Set(data.lines.map((l) => l.unit)));
+  const totalUnit = allUnits.length === 1 ? (allUnits[0] === 'BO' ? 'Bộ' : 'Chiếc') : '';
+
+  return (
+    <Document title={`${codeShown} — Biên bản giao nhận hàng hoá`} author={c.name ?? 'QL Kho Lốp'}>
+      <Page size="A4" style={styles.page}>
+        {c.name ? <Text style={styles.bbCompany}>{c.name}</Text> : null}
+        {c.address ? <Text style={styles.bbAddress}>Địa chỉ: {c.address}</Text> : null}
+        {c.bank ? <Text style={styles.bbBank}>STK: {c.bank}</Text> : null}
+        {c.phone ? <Text style={styles.bbBank}>Điện thoại: {c.phone}</Text> : null}
+
+        <Text style={styles.bbTitle}>BIÊN BẢN GIAO NHẬN HÀNG HÓA</Text>
+
+        <View style={styles.bbMetaRow}>
+          <View style={styles.bbMetaCol}>
+            <Text style={styles.bbMetaLine}>Số : {codeShown}</Text>
+          </View>
+          <View style={styles.bbMetaCol}>
+            <Text style={styles.bbMetaLine}>Ngày bán hàng : {formatDateVN(data.date)}</Text>
+          </View>
+        </View>
+
+        <View style={{ marginTop: 10 }}>
+          <Text style={styles.bbMetaLine}>Tên khách hàng : {data.customerOrPartner ?? ''}</Text>
+          <Text style={styles.bbMetaLine}>Địa chỉ: {data.customerAddress ?? ''}</Text>
+          <Text style={styles.bbMetaLine}>Điện thoại: {data.customerPhone ?? ''}</Text>
+          <Text style={styles.bbMetaLine}>Ghi chú: {data.note ?? ''}</Text>
+        </View>
+
+        <View style={styles.bbTable}>
+          <View style={styles.bbTr} fixed>
+            <Text style={[styles.bbTh, styles.bbColStt]}>STT</Text>
+            <Text style={[styles.bbTh, styles.bbColSku]}>Mã hàng</Text>
+            <Text style={[styles.bbTh, styles.bbColName]}>Tên hàng hóa</Text>
+            <Text style={[styles.bbTh, styles.bbColUnit]}>Đơn vị tính</Text>
+            <Text style={[styles.bbThLast, styles.bbColQty]}>Số lượng</Text>
+          </View>
+          {data.lines.map((ln, i) => (
+            <View key={i} style={styles.bbTr} wrap={false}>
+              <Text style={[styles.bbTd, styles.bbColStt]}>{i + 1}</Text>
+              <Text style={[styles.bbTd, styles.bbColSku]}>{ln.sku}</Text>
+              <Text style={[styles.bbTd, styles.bbColName]}>{ln.productName}</Text>
+              <Text style={[styles.bbTd, styles.bbColUnit]}>{ln.unit === 'BO' ? 'Bộ' : 'Chiếc'}</Text>
+              <Text style={[styles.bbTdLast, styles.bbColQty]}>{ln.quantity}</Text>
+            </View>
+          ))}
+          <View style={styles.bbTrLast} wrap={false}>
+            <Text style={[styles.bbTotalCell, { width: '68%' }]}>Tổng</Text>
+            <Text style={[styles.bbTotalCell, styles.bbColUnit]}>{totalUnit}</Text>
+            <Text style={[styles.bbTdLast, styles.bbColQty, { fontWeight: 700, textAlign: 'center' }]}>{total}</Text>
+          </View>
+        </View>
+
+        <View style={styles.bbSignRow} wrap={false}>
+          <View style={styles.bbSignCell}><Text style={styles.bbSignLabel}>Bên giao hàng</Text></View>
+          <View style={styles.bbSignCell}><Text style={styles.bbSignLabel}>Bên vận chuyển</Text></View>
+          <View style={styles.bbSignCell}><Text style={styles.bbSignLabel}>Bên nhận hàng</Text></View>
+        </View>
+
+        <View style={styles.footer} fixed>
+          <Text>{c.name ?? 'QL Kho Lốp'} · {codeShown} · In lúc {formatDateVN(new Date())}</Text>
+          <Text render={({ pageNumber, totalPages }) => `Trang ${pageNumber}/${totalPages}`} />
+        </View>
+      </Page>
+    </Document>
+  );
 }
 
 function ReceiptPdfDoc({ data }: { data: ReceiptPdfData }) {
@@ -170,7 +279,7 @@ function ReceiptPdfDoc({ data }: { data: ReceiptPdfData }) {
             <Text style={styles.signCaption}>(Ký, ghi rõ họ tên)</Text>
           </View>
           <View style={styles.signCell}>
-            <Text style={styles.signLabel}>{data.type === 'OUTBOUND' ? 'Người nhận hàng' : data.type === 'TRANSFER' ? 'Người nhận tại kho đến' : 'Thủ kho'}</Text>
+            <Text style={styles.signLabel}>{data.type === 'TRANSFER' ? 'Người nhận tại kho đến' : 'Thủ kho'}</Text>
             <Text style={styles.signCaption}>(Ký, ghi rõ họ tên)</Text>
           </View>
         </View>
@@ -189,5 +298,8 @@ function ReceiptPdfDoc({ data }: { data: ReceiptPdfData }) {
 }
 
 export async function renderReceiptPdf(data: ReceiptPdfData): Promise<Buffer> {
+  if (data.type === 'OUTBOUND') {
+    return await renderToBuffer(<OutboundBienBanDoc data={data} />);
+  }
   return await renderToBuffer(<ReceiptPdfDoc data={data} />);
 }

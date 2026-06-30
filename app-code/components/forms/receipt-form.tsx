@@ -12,16 +12,29 @@ type Product = { id: string; sku: string; fullName: string; brand: string; size:
 type Warehouse = { id: string; code: string; name: string };
 type Line = { productId: string; unit: 'BO' | 'CHIEC'; quantity: number; lineNote?: string };
 
+type Initial = {
+  warehouseId?: string;
+  toWarehouseId?: string;
+  date?: string;
+  customerOrPartner?: string | null;
+  customerAddress?: string | null;
+  customerPhone?: string | null;
+  note?: string | null;
+  lines?: Line[];
+};
+
 type Props = {
   type: 'INBOUND' | 'OUTBOUND' | 'TRANSFER';
   products: Product[];
   warehouses: Warehouse[];
   defaultWarehouseId?: string | null;
   action: (payload: any) => Promise<{ ok?: boolean; error?: string; receiptId?: string; receiptCode?: string; backdateWarning?: string }>;
+  initial?: Initial;
+  submitLabelOverride?: string;
+  redirectAfterPath?: string;
 };
 
 function randomClientRequestId(): string {
-  // tiny UUID4-ish
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
@@ -34,19 +47,34 @@ const labels = {
   TRANSFER: { title: 'Tạo phiếu chuyển kho', save: 'Lưu phiếu chuyển', warehouseLabel: 'Kho nguồn (từ)' }
 };
 
-export function ReceiptForm({ type, products, warehouses, defaultWarehouseId, action }: Props) {
+export function ReceiptForm({
+  type,
+  products,
+  warehouses,
+  defaultWarehouseId,
+  action,
+  initial,
+  submitLabelOverride,
+  redirectAfterPath
+}: Props) {
   const router = useRouter();
   const { push } = useToast();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const today = new Date().toISOString().slice(0, 10);
 
-  const [warehouseId, setWarehouseId] = useState<string>(defaultWarehouseId ?? warehouses[0]?.id ?? '');
-  const [toWarehouseId, setToWarehouseId] = useState<string>('');
-  const [date, setDate] = useState<string>(today);
-  const [customerOrPartner, setCustomerOrPartner] = useState<string>('');
-  const [note, setNote] = useState<string>('');
-  const [lines, setLines] = useState<Line[]>([{ productId: '', unit: 'BO', quantity: 1 }]);
+  const [warehouseId, setWarehouseId] = useState<string>(initial?.warehouseId ?? defaultWarehouseId ?? warehouses[0]?.id ?? '');
+  const [toWarehouseId, setToWarehouseId] = useState<string>(initial?.toWarehouseId ?? '');
+  const [date, setDate] = useState<string>(initial?.date ?? today);
+  const [customerOrPartner, setCustomerOrPartner] = useState<string>(initial?.customerOrPartner ?? '');
+  const [customerAddress, setCustomerAddress] = useState<string>(initial?.customerAddress ?? '');
+  const [customerPhone, setCustomerPhone] = useState<string>(initial?.customerPhone ?? '');
+  const [note, setNote] = useState<string>(initial?.note ?? '');
+  const [lines, setLines] = useState<Line[]>(
+    initial?.lines && initial.lines.length > 0
+      ? initial.lines.map((l) => ({ productId: l.productId, unit: l.unit, quantity: l.quantity, lineNote: l.lineNote ?? undefined }))
+      : [{ productId: '', unit: 'BO', quantity: 1 }]
+  );
 
   const lbl = labels[type];
 
@@ -57,17 +85,11 @@ export function ReceiptForm({ type, products, warehouses, defaultWarehouseId, ac
   const updateLine = (idx: number, patch: Partial<Line>) =>
     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
 
-  // (onSelectProduct removed — combobox onChange now handles product + unit in 1 call)
-
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    // Local validate
-    if (!warehouseId) {
-      setError('Chưa chọn kho.');
-      return;
-    }
+    if (!warehouseId) { setError('Chưa chọn kho.'); return; }
     if (type === 'TRANSFER') {
       if (!toWarehouseId) { setError('Chưa chọn kho đến.'); return; }
       if (toWarehouseId === warehouseId) { setError('Kho đến phải khác kho nguồn.'); return; }
@@ -82,7 +104,7 @@ export function ReceiptForm({ type, products, warehouses, defaultWarehouseId, ac
       if (!confirm('Có dòng số lượng > 500. Xác nhận?')) return;
     }
 
-    const basePayload = {
+    const basePayload: any = {
       type,
       warehouseId,
       toWarehouseId: type === 'TRANSFER' ? toWarehouseId : undefined,
@@ -92,6 +114,10 @@ export function ReceiptForm({ type, products, warehouses, defaultWarehouseId, ac
       lines,
       clientRequestId: randomClientRequestId()
     };
+    if (type === 'OUTBOUND') {
+      basePayload.customerAddress = customerAddress.trim() || undefined;
+      basePayload.customerPhone = customerPhone.trim() || undefined;
+    }
 
     const submit = (forceBackdate = false) =>
       startTransition(async () => {
@@ -104,8 +130,8 @@ export function ReceiptForm({ type, products, warehouses, defaultWarehouseId, ac
           setError(r.error);
         } else {
           push({ variant: 'success', message: `Đã lưu phiếu ${r.receiptCode ?? ''}.` });
-          const path = type === 'INBOUND' ? '/nhap-kho' : type === 'OUTBOUND' ? '/xuat-kho' : '/chuyen-kho';
-          router.push(path);
+          const fallbackPath = type === 'INBOUND' ? '/nhap-kho' : type === 'OUTBOUND' ? '/xuat-kho' : '/chuyen-kho';
+          router.push(redirectAfterPath ?? fallbackPath);
           router.refresh();
         }
       });
@@ -151,21 +177,45 @@ export function ReceiptForm({ type, products, warehouses, defaultWarehouseId, ac
           <Label htmlFor="date">Ngày <span className="text-danger">*</span></Label>
           <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
         </div>
+
         {type === 'OUTBOUND' && (
-          <div className="space-y-1.5 md:col-span-3">
-            <Label htmlFor="customerOrPartner">Khách hàng / Người nhận (tự do)</Label>
-            <Input
-              id="customerOrPartner"
-              value={customerOrPartner}
-              onChange={(e) => setCustomerOrPartner(e.target.value)}
-              placeholder="VD: Hải - Nghệ An"
-              maxLength={256}
-            />
-          </div>
+          <>
+            <div className="space-y-1.5 md:col-span-3">
+              <Label htmlFor="customerOrPartner">Tên khách hàng / Người nhận</Label>
+              <Input
+                id="customerOrPartner"
+                value={customerOrPartner}
+                onChange={(e) => setCustomerOrPartner(e.target.value)}
+                placeholder="VD: A. Đạt"
+                maxLength={256}
+              />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label htmlFor="customerAddress">Địa chỉ (tuỳ chọn — in trên phiếu)</Label>
+              <Input
+                id="customerAddress"
+                value={customerAddress}
+                onChange={(e) => setCustomerAddress(e.target.value)}
+                placeholder="VD: Số 12 Nguyễn Trãi, Hà Nội"
+                maxLength={512}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="customerPhone">Điện thoại (tuỳ chọn)</Label>
+              <Input
+                id="customerPhone"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="VD: 0912 345 678"
+                maxLength={64}
+              />
+            </div>
+          </>
         )}
+
         <div className="space-y-1.5 md:col-span-3">
           <Label htmlFor="note">Ghi chú phiếu</Label>
-          <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
+          <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder={type === 'OUTBOUND' ? 'VD: Hàng làm mẫu' : ''} />
         </div>
       </div>
 
@@ -232,7 +282,9 @@ export function ReceiptForm({ type, products, warehouses, defaultWarehouseId, ac
       {error && <div role="alert" className="text-sm text-danger-strong bg-danger-soft rounded-md p-3">{error}</div>}
 
       <div className="flex items-center gap-2 sticky bottom-0 bg-background border-t -mx-4 md:-mx-6 px-4 md:px-6 py-3">
-        <Button type="submit" disabled={pending}>{pending ? 'Đang lưu...' : lbl.save}</Button>
+        <Button type="submit" disabled={pending}>
+          {pending ? 'Đang lưu...' : (submitLabelOverride ?? lbl.save)}
+        </Button>
         <Button type="button" variant="ghost" onClick={() => router.back()}>Huỷ</Button>
       </div>
     </form>

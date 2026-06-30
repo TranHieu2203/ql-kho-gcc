@@ -86,6 +86,8 @@ model Receipt {
   toWarehouseId     String?
   date              DateTime
   customerOrPartner String?
+  customerAddress   String?
+  customerPhone     String?
   note              String?
   createdById       String
   clientRequestId   String?  @unique

@@ -18,6 +18,8 @@ export type CreateReceiptInput = {
   toWarehouseId?: string | null;   // TRANSFER only
   date: Date;
   customerOrPartner?: string | null;
+  customerAddress?: string | null;
+  customerPhone?: string | null;
   note?: string | null;
   lines: LineInput[];
   createdById: string;
@@ -88,6 +90,8 @@ export async function createInboundOutbound(input: CreateReceiptInput, overstock
         warehouseId: input.warehouseId,
         date: input.date,
         customerOrPartner: input.customerOrPartner ?? null,
+        customerAddress: input.customerAddress ?? null,
+        customerPhone: input.customerPhone ?? null,
         note: input.note ?? null,
         createdById: input.createdById,
         clientRequestId: input.clientRequestId ?? null,
