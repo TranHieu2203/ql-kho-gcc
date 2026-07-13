@@ -10,7 +10,8 @@ const ALLOWED_KEYS = new Set([
   'company_address',
   'company_bank',
   'company_phone',
-  'outbound_receipt_prefix'
+  'outbound_receipt_prefix',
+  'inbound_receipt_prefix'
 ]);
 
 const MAX_LEN: Record<string, number> = {
@@ -18,7 +19,8 @@ const MAX_LEN: Record<string, number> = {
   company_address: 512,
   company_bank: 256,
   company_phone: 64,
-  outbound_receipt_prefix: 8
+  outbound_receipt_prefix: 8,
+  inbound_receipt_prefix: 8
 };
 
 export async function updateSettings(fd: FormData) {

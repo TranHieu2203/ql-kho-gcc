@@ -17,7 +17,9 @@ const payloadSchema = z.object({
   type: z.literal('INBOUND'),
   warehouseId: z.string().min(1),
   date: z.string().min(1),
-  customerOrPartner: z.string().max(256).optional(),
+  customerOrPartner: z.string().max(256).optional(),  // Tên nhà cung cấp
+  customerAddress: z.string().max(512).optional(),    // Địa chỉ NCC
+  customerPhone: z.string().max(64).optional(),       // ĐT NCC
   note: z.string().max(500).optional(),
   lines: z.array(lineSchema).min(1).max(200),
   clientRequestId: z.string().optional()
@@ -41,6 +43,8 @@ export async function createInboundReceipt(payload: unknown) {
         warehouseId: parsed.data.warehouseId,
         date: new Date(parsed.data.date),
         customerOrPartner: parsed.data.customerOrPartner ?? null,
+        customerAddress: parsed.data.customerAddress ?? null,
+        customerPhone: parsed.data.customerPhone ?? null,
         note: parsed.data.note ?? null,
         lines: parsed.data.lines,
         createdById: user.id,

@@ -43,23 +43,23 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     return new NextResponse('Forbidden', { status: 403 });
   }
 
-  // Load company info + display code prefix from settings (for OUTBOUND header)
-  const settingKeys = ['company_name', 'company_address', 'company_bank', 'company_phone', 'outbound_receipt_prefix'];
+  // Load company info + display code prefix from settings (for OUTBOUND / INBOUND header)
+  const settingKeys = ['company_name', 'company_address', 'company_bank', 'company_phone', 'outbound_receipt_prefix', 'inbound_receipt_prefix'];
   const settings = await prisma.setting.findMany({ where: { key: { in: settingKeys } } });
   const settingMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
 
-  // Build display code: nếu OUTBOUND + có prefix → tạo mã PXYYMMDD-NNN dạng ngắn
+  // Build display code: format PXddmmyy hoặc PNddmmyy tuỳ prefix cấu hình
   let displayCode: string | undefined;
-  if (r.type === 'OUTBOUND' && settingMap.outbound_receipt_prefix) {
+  const prefix = r.type === 'OUTBOUND'
+    ? settingMap.outbound_receipt_prefix
+    : r.type === 'INBOUND'
+      ? settingMap.inbound_receipt_prefix
+      : undefined;
+  if (prefix) {
     const dd = String(r.date.getDate()).padStart(2, '0');
     const mm = String(r.date.getMonth() + 1).padStart(2, '0');
     const yy = String(r.date.getFullYear()).slice(-2);
-    // Lấy seq từ mã gốc OUT-YYYY-NNNN
-    const m = r.code.match(/(\d+)$/);
-    const seq = m ? m[1].padStart(2, '0').slice(-2) : '01';
-    displayCode = `${settingMap.outbound_receipt_prefix}${dd}${mm}${yy}${seq === '00' ? '' : ''}`;
-    // Format chính: PXddmmyy (8 ký tự + prefix) — phù hợp ví dụ PX080526
-    displayCode = `${settingMap.outbound_receipt_prefix}${dd}${mm}${yy}`;
+    displayCode = `${prefix}${dd}${mm}${yy}`;
   }
 
   const buffer = await renderReceiptPdf({

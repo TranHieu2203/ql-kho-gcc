@@ -10,7 +10,8 @@ RUN npm ci --no-audit --no-fund
 # ===== Stage 2: builder — compile Next.js standalone =====
 FROM node:20-alpine AS builder
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
+# ca-certificates + openssl cần cho `npx prisma generate` (fetch schema-engine từ binaries.prisma.sh)
+RUN apk add --no-cache libc6-compat ca-certificates openssl && update-ca-certificates
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Prisma generate runs at install time, but ensure client is fresh for build

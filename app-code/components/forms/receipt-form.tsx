@@ -114,7 +114,7 @@ export function ReceiptForm({
       lines,
       clientRequestId: randomClientRequestId()
     };
-    if (type === 'OUTBOUND') {
+    if (type === 'OUTBOUND' || type === 'INBOUND') {
       basePayload.customerAddress = customerAddress.trim() || undefined;
       basePayload.customerPhone = customerPhone.trim() || undefined;
     }
@@ -178,15 +178,17 @@ export function ReceiptForm({
           <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
         </div>
 
-        {type === 'OUTBOUND' && (
+        {(type === 'OUTBOUND' || type === 'INBOUND') && (
           <>
             <div className="space-y-1.5 md:col-span-3">
-              <Label htmlFor="customerOrPartner">Tên khách hàng / Người nhận</Label>
+              <Label htmlFor="customerOrPartner">
+                {type === 'INBOUND' ? 'Tên nhà cung cấp' : 'Tên khách hàng / Người nhận'}
+              </Label>
               <Input
                 id="customerOrPartner"
                 value={customerOrPartner}
                 onChange={(e) => setCustomerOrPartner(e.target.value)}
-                placeholder="VD: A. Đạt"
+                placeholder={type === 'INBOUND' ? 'VD: Công ty TNHH ABC' : 'VD: A. Đạt'}
                 maxLength={256}
               />
             </div>

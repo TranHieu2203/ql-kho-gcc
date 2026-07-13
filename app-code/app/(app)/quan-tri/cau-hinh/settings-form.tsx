@@ -97,19 +97,31 @@ export function SettingsForm({ settings }: { settings: Record<string, string> })
             maxLength={64}
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="outbound_receipt_prefix">Tiền tố mã phiếu xuất khi in (tuỳ chọn)</Label>
-          <Input
-            id="outbound_receipt_prefix"
-            name="outbound_receipt_prefix"
-            defaultValue={settings.outbound_receipt_prefix ?? ''}
-            placeholder="VD: PX (để chuyển OUT-2026-0001 → PX260001 khi in)"
-            maxLength={8}
-          />
-          <p className="text-xs text-muted-foreground">
-            Để trống → in mã gốc OUT-YYYY-NNNN. Nếu nhập (vd: <code className="font-mono">PX</code>), mã in trên PDF sẽ thành <code className="font-mono">PXYYMMDD</code> theo ngày phiếu.
-          </p>
+        <div className="grid md:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="outbound_receipt_prefix">Tiền tố mã phiếu XUẤT khi in (tuỳ chọn)</Label>
+            <Input
+              id="outbound_receipt_prefix"
+              name="outbound_receipt_prefix"
+              defaultValue={settings.outbound_receipt_prefix ?? ''}
+              placeholder="VD: PX"
+              maxLength={8}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="inbound_receipt_prefix">Tiền tố mã phiếu NHẬP khi in (tuỳ chọn)</Label>
+            <Input
+              id="inbound_receipt_prefix"
+              name="inbound_receipt_prefix"
+              defaultValue={settings.inbound_receipt_prefix ?? ''}
+              placeholder="VD: PN"
+              maxLength={8}
+            />
+          </div>
         </div>
+        <p className="text-xs text-muted-foreground -mt-1">
+          Để trống → in mã gốc <code className="font-mono">OUT-YYYY-NNNN</code> / <code className="font-mono">IN-YYYY-NNNN</code>. Nếu nhập tiền tố (vd: <code className="font-mono">PX</code>, <code className="font-mono">PN</code>), mã in trên PDF sẽ thành <code className="font-mono">PXddmmyy</code> theo ngày phiếu.
+        </p>
       </section>
 
       <Button type="submit" disabled={pending}>{pending ? 'Đang lưu...' : 'Lưu cấu hình'}</Button>
