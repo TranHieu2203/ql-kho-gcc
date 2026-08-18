@@ -61,13 +61,13 @@ export default async function StockPage({ searchParams }: { searchParams: Search
   }
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-y-auto p-4 md:p-6">
+    <div className="flex flex-col gap-4 p-4 md:p-6 md:h-full md:min-h-0 md:overflow-y-auto">
       <div>
         <h1 className="text-2xl font-bold">Tồn kho hiện tại</h1>
         <p className="text-sm text-muted-foreground mt-1">{total} sản phẩm · {warehouses.length} kho</p>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-[260px]">
+      <Card className="flex flex-col md:flex-1 md:overflow-hidden md:min-h-[320px]">
         <div className="p-4 border-b flex-shrink-0">
           <form>
             {searchParams.pageSize && <input type="hidden" name="pageSize" value={searchParams.pageSize} />}
@@ -80,7 +80,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
             />
           </form>
         </div>
-        <Table containerClassName="flex-1 min-h-0">
+        <Table containerClassName="md:flex-1 md:min-h-0">
           <TableHeader>
             <TableRow>
               <TableHead>Mã hàng</TableHead>

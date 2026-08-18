@@ -46,7 +46,7 @@ export default async function TransferListPage({ searchParams }: { searchParams:
   });
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-y-auto p-4 md:p-6">
+    <div className="flex flex-col gap-4 p-4 md:p-6 md:h-full md:min-h-0 md:overflow-y-auto">
       <div className="flex items-baseline justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Phiếu Chuyển kho</h1>
@@ -56,11 +56,11 @@ export default async function TransferListPage({ searchParams }: { searchParams:
           <Link href="/chuyen-kho/tao"><Plus className="w-4 h-4" />Tạo phiếu chuyển</Link>
         </Button>
       </div>
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-[260px]">
+      <Card className="flex flex-col md:flex-1 md:overflow-hidden md:min-h-[320px]">
         {receipts.length === 0 ? (
           <div className="text-center py-12 text-sm text-muted-foreground">Chưa có phiếu chuyển kho nào.</div>
         ) : (
-          <Table containerClassName="flex-1 min-h-0">
+          <Table containerClassName="md:flex-1 md:min-h-0">
             <TableHeader>
               <TableRow>
                 <TableHead>Mã phiếu</TableHead>

@@ -48,7 +48,7 @@ export default async function BackupPage() {
           <li>Quay lại đây → dán nội dung file JSON + Spreadsheet ID → Lưu cấu hình → Test kết nối → Backup ngay.</li>
         </ol>
         <p className="mt-3 text-xs">
-          💡 <strong>Schedule tự động</strong>: chọn "Hàng ngày" / "Hàng tuần" sẽ ghi lại lựa chọn, nhưng phải có OS cron gọi <code className="bg-card px-1 rounded">/api/cron/backup?token=...</code> (xem DEPLOY.md mục Cron để cấu hình).
+          💡 <strong>Schedule tự động</strong>: lựa chọn bên dưới chỉ được ghi lại; người bấm nút thực sự là service <code className="bg-card px-1 rounded">cron</code> trong docker-compose, nó gọi <code className="bg-card px-1 rounded">/api/cron/backup</code> định kỳ. Muốn chạy tự động thì <strong>bắt buộc</strong> phải set <code className="bg-card px-1 rounded">CRON_SECRET</code> trong <code className="bg-card px-1 rounded">.env</code> — để rỗng là job không bao giờ chạy. Kiểm tra bằng <code className="bg-card px-1 rounded">docker compose logs cron</code>.
         </p>
       </details>
     </div>

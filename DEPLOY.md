@@ -174,31 +174,36 @@ sudo chmod +x /etc/cron.daily/ql-kho-backup
 3. Tạo Google Sheet trống → share với email service account (Editor)
 4. Paste JSON + Spreadsheet ID → Lưu → Test kết nối → Backup ngay
 
-**Bật schedule tự động (cron gọi endpoint):**
+**Bật schedule tự động:**
+
+App **không có scheduler bên trong**. Ô "Lịch chạy tự động" trong UI chỉ ghi lại lựa chọn;
+service `cron` trong `docker-compose.yml` mới là thứ gọi `/api/cron/backup` định kỳ.
+
+Chỉ cần set token là xong — không phải đụng gì trên host:
+
 ```bash
-# 1) Tạo CRON_SECRET — token bí mật ≥16 ký tự
-CRON_SECRET=$(openssl rand -hex 24)
-echo "CRON_SECRET=$CRON_SECRET" >> /opt/ql-kho-gcc/.env
-
-# 2) Khai báo env vào docker-compose (đã có sẵn). Restart app:
 cd /opt/ql-kho-gcc
+echo "CRON_SECRET=$(openssl rand -hex 24)" >> .env
 docker compose up -d
+docker compose logs -f cron          # xem job chạy
+```
 
-# 3) Cài cron — chọn 1 trong 2 tùy schedule bạn dùng trong UI:
-#    (a) Nếu UI chọn 'Hàng giờ' → cron mỗi 15 phút
-#    (b) Nếu UI chọn 'Hàng ngày' / 'Hàng tuần' → cron mỗi 6 giờ là đủ
-# Endpoint TỰ skip nếu chưa đến hạn → an toàn ngay cả khi cron freq cao.
+> ⚠️ Để `CRON_SECRET` rỗng thì job **không bao giờ chạy** — container `cron` sẽ log cảnh báo
+> và đứng im, còn endpoint trả 503.
 
-# (a) Hourly mode:
+Tần suất gọi đặt ở `BACKUP_CRON` trong `.env` (mặc định `*/15 * * * *`). Gọi dày là vô hại
+vì endpoint tự skip khi chưa đến hạn; dùng `0 */6 * * *` nếu chỉ backup hàng ngày/tuần.
+
+<details><summary>Nếu muốn dùng cron của host thay vì service <code>cron</code></summary>
+
+```bash
 sudo tee /etc/cron.d/ql-kho-google-backup <<EOF
 */15 * * * * root curl -fsS "https://${DOMAIN}/api/cron/backup?token=${CRON_SECRET}" >> /var/log/ql-kho-backup.log 2>&1
 EOF
-
-# (b) Daily/Weekly mode (uncomment thay vì (a) nếu dùng):
-# sudo tee /etc/cron.d/ql-kho-google-backup <<EOF
-# 0 */6 * * * root curl -fsS "https://${DOMAIN}/api/cron/backup?token=${CRON_SECRET}" >> /var/log/ql-kho-backup.log 2>&1
-# EOF
 ```
+Nhớ `docker compose stop cron` để không chạy hai nơi cùng lúc (không hại, chỉ thừa).
+</details>
+
 Endpoint tự xử lý theo `schedule` đã chọn trong UI:
 - `manual` → luôn skip
 - `hourly` → chỉ chạy nếu last_run ≥ 55 phút trước (buffer 5 phút)

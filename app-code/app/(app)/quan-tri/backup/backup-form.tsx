@@ -166,9 +166,11 @@ export function BackupForm({ initial }: {
                 <option value="weekly">Hàng tuần</option>
               </select>
               <p className="text-xs text-muted-foreground mt-1">
-                Schedule chỉ là metadata. Phải có OS cron gọi <code>/api/cron/backup?token=...</code> để thực sự chạy theo lịch.
-                {schedule === 'hourly' && (
-                  <><br/><strong>Hàng giờ:</strong> cron cần gọi mỗi 15 phút (endpoint tự skip nếu chưa đến hạn).</>
+                App không tự hẹn giờ. Lịch này chỉ là metadata — service <code>cron</code> trong docker-compose mới
+                là thứ gọi <code>/api/cron/backup</code>, và endpoint dùng lịch này để quyết định chạy hay bỏ qua.
+                {schedule !== 'manual' && (
+                  <><br/>Cần <code>CRON_SECRET</code> trong <code>.env</code>; để rỗng thì job không chạy.
+                  Xem log: <code>docker compose logs cron</code>.</>
                 )}
               </p>
             </div>

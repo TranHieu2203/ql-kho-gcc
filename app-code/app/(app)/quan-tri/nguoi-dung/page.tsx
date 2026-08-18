@@ -29,7 +29,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
   });
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-y-auto p-4 md:p-6">
+    <div className="flex flex-col gap-4 p-4 md:p-6 md:h-full md:min-h-0 md:overflow-y-auto">
       <Link href="/quan-tri" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft className="w-4 h-4" />Quay lại
       </Link>
@@ -43,8 +43,8 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
         </Button>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-[260px]">
-        <Table containerClassName="flex-1 min-h-0">
+      <Card className="flex flex-col md:flex-1 md:overflow-hidden md:min-h-[320px]">
+        <Table containerClassName="md:flex-1 md:min-h-0">
           <TableHeader>
             <TableRow>
               <TableHead>Tên đăng nhập</TableHead>

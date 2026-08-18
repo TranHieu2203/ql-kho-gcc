@@ -80,7 +80,7 @@ export default async function NxtReportPage({ searchParams }: { searchParams: Se
   const activeCount = Object.entries(searchParams).filter(([k, v]) => v && k !== 'page' && k !== 'pageSize').length;
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-y-auto p-4 md:p-6">
+    <div className="flex flex-col gap-4 p-4 md:p-6 md:h-full md:min-h-0 md:overflow-y-auto">
       <div className="flex items-baseline justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold">Báo cáo Nhập – Xuất – Tồn</h1>
@@ -98,7 +98,7 @@ export default async function NxtReportPage({ searchParams }: { searchParams: Se
         </div>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-[260px]">
+      <Card className="flex flex-col md:flex-1 md:overflow-hidden md:min-h-[560px]">
         <form className="p-4 space-y-4 border-b flex-shrink-0 overflow-y-auto max-h-[45%]">
           {/* Row 1: kỳ + kho */}
           <div className="grid md:grid-cols-4 gap-3">
@@ -254,7 +254,7 @@ export default async function NxtReportPage({ searchParams }: { searchParams: Se
           </div>
         </div>
 
-        <Table containerClassName="flex-1 min-h-0">
+        <Table containerClassName="md:flex-1 md:min-h-0">
           <TableHeader>
             <TableRow>
               <TableHead className="w-10">TT</TableHead>

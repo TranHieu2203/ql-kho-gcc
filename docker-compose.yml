@@ -50,6 +50,47 @@ services:
       retries: 3
       start_period: 15s
 
+  cron:
+    image: alpine:3.20
+    container_name: ql-kho-cron
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+      CRON_SECRET: ${CRON_SECRET:-}
+      BACKUP_CRON: ${BACKUP_CRON:-*/15 * * * *}
+    networks:
+      - default
+    command:
+      - sh
+      - -c
+      # LƯU Ý: mọi `$` mà SHELL cần thấy phải viết `$$` — Compose nội suy file này
+      # trước, `$FOO` không escape sẽ bị thay bằng rỗng.
+      - |
+        set -eu
+        if [ -z "$${CRON_SECRET:-}" ]; then
+          echo "[ql-kho-cron] CRON_SECRET rỗng trong .env — KHÔNG lên lịch backup."
+          echo "[ql-kho-cron] Sinh token:  openssl rand -hex 24"
+          echo "[ql-kho-cron] Thêm CRON_SECRET=<token> vào .env rồi: docker compose up -d"
+          while true; do sleep 3600; done
+        fi
+        # Token ghi ra file vì busybox crond chạy job với env tối giản (không có CRON_SECRET).
+        printf '%s' "$${CRON_SECRET}" > /cron_token
+        chmod 600 /cron_token
+        cat > /run-backup.sh <<'SH'
+        #!/bin/sh
+        T=$$(cat /cron_token)
+        R=$$(wget -q -O- "http://app:3000/api/cron/backup?token=$$T" 2>&1) || R="request failed"
+        echo "[$$(date '+%F %T')] backup -> $$R"
+        SH
+        chmod +x /run-backup.sh
+        # >> /proc/1/fd/1 để log job hiện trong `docker compose logs cron`
+        echo "$${BACKUP_CRON} /run-backup.sh >> /proc/1/fd/1 2>&1" > /etc/crontabs/root
+        echo "[ql-kho-cron] Lịch: $${BACKUP_CRON} -> http://app:3000/api/cron/backup"
+        exec crond -f -l 8
+
 networks:
   default:
     name: ql-kho_default

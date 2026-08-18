@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             user={{ id: user.id, username: user.username, fullName: user.fullName, role: user.role }}
             warehouses={warehouses}
           />
-          <main className="flex-1 min-h-0 overflow-hidden mb-16 md:mb-0" role="main">
+          <main className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden mb-16 md:mb-0" role="main">
             {children}
           </main>
         </div>

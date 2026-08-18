@@ -106,8 +106,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
   const exportHref = `/api/reports/danh-muc.xlsx?${exportSp.toString()}`;
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-y-auto p-4 md:p-6">
-      <div className="flex items-baseline justify-between gap-4">
+    <div className="flex flex-col gap-4 p-4 md:p-6 md:h-full md:min-h-0 md:overflow-y-auto">
+      <div className="flex items-baseline justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold">Danh mục sản phẩm</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -132,7 +132,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
         </div>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-[260px]">
+      <Card className="flex flex-col md:flex-1 md:overflow-hidden md:min-h-[360px]">
         <div className="p-4 border-b space-y-3 flex-shrink-0">
           <form>
             {status !== 'dang-ap-dung' && <input type="hidden" name="trangThai" value={status} />}
@@ -194,7 +194,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
             )}
           </div>
         ) : (
-          <Table containerClassName="flex-1 min-h-0">
+          <Table containerClassName="md:flex-1 md:min-h-0">
             <TableHeader>
               <TableRow>
                 <TableHead>Mã SKU</TableHead>

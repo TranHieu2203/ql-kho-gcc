@@ -152,7 +152,7 @@ export default async function StockDetailPage({
   ];
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-y-auto p-4 md:p-6 max-w-7xl">
+    <div className="flex flex-col gap-4 p-4 md:p-6 md:h-full md:min-h-0 md:overflow-y-auto max-w-7xl">
       <Link href="/ton-kho" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground flex-shrink-0">
         <ChevronLeft className="w-4 h-4" />Quay lại tồn kho
       </Link>
@@ -193,7 +193,7 @@ export default async function StockDetailPage({
         </span>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-[320px]">
+      <Card className="flex flex-col md:flex-1 md:overflow-hidden md:min-h-[480px]">
         <CardHeader className="flex-row items-center justify-between gap-4 flex-wrap space-y-0 flex-shrink-0">
           <CardTitle>Lịch sử nhập xuất</CardTitle>
           <div className="flex gap-2">
@@ -208,7 +208,7 @@ export default async function StockDetailPage({
           </div>
         </CardHeader>
 
-        <CardContent className="p-0 flex-1 min-h-0 flex flex-col">
+        <CardContent className="p-0 flex flex-col md:flex-1 md:min-h-0">
           {/* Bộ lọc */}
           <form className="p-4 grid md:grid-cols-4 gap-3 border-y bg-muted/20 flex-shrink-0">
             <div className="space-y-1.5">
@@ -320,7 +320,7 @@ export default async function StockDetailPage({
               Không có giao dịch nào khớp bộ lọc.
             </div>
           ) : (
-            <Table containerClassName="flex-1 min-h-0">
+            <Table containerClassName="md:flex-1 md:min-h-0">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Ngày</TableHead>
