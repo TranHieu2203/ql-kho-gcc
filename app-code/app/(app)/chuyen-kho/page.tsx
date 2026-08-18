@@ -7,26 +7,36 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus } from 'lucide-react';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { validateRequest, getUserWarehouses } from '@/lib/auth/lucia';
+import { Pagination } from '@/components/ui/pagination';
+import { parsePaging, pageMeta } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TransferListPage() {
+type SearchParams = { page?: string; pageSize?: string };
+
+export default async function TransferListPage({ searchParams }: { searchParams: SearchParams }) {
   const { user } = await validateRequest();
   if (!user) redirect('/login');
   const myWhIds = user.role === 'ADMIN'
     ? (await prisma.warehouse.findMany({ select: { id: true } })).map((w) => w.id)
     : (await getUserWarehouses(user.id)).map((w) => w.id);
 
+  const where = {
+    type: 'TRANSFER',
+    OR: [
+      { fromWarehouseId: { in: myWhIds } },
+      { toWarehouseId: { in: myWhIds } }
+    ]
+  };
+  const paging = parsePaging(searchParams);
+  const total = await prisma.receipt.count({ where });
+  const meta = pageMeta(total, paging);
+
   const receipts = await prisma.receipt.findMany({
-    where: {
-      type: 'TRANSFER',
-      OR: [
-        { fromWarehouseId: { in: myWhIds } },
-        { toWarehouseId: { in: myWhIds } }
-      ]
-    },
-    orderBy: { date: 'desc' },
-    take: 100,
+    where,
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    skip: (meta.page - 1) * meta.pageSize,
+    take: meta.pageSize,
     include: {
       fromWarehouse: { select: { code: true, name: true } },
       toWarehouse: { select: { code: true, name: true } },
@@ -36,21 +46,21 @@ export default async function TransferListPage() {
   });
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="h-full min-h-0 flex flex-col gap-4 overflow-y-auto p-4 md:p-6">
       <div className="flex items-baseline justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Phiếu Chuyển kho</h1>
-          <p className="text-sm text-muted-foreground mt-1">{receipts.length} phiếu</p>
+          <p className="text-sm text-muted-foreground mt-1">{total} phiếu chuyển</p>
         </div>
         <Button asChild>
           <Link href="/chuyen-kho/tao"><Plus className="w-4 h-4" />Tạo phiếu chuyển</Link>
         </Button>
       </div>
-      <Card>
+      <Card className="flex-1 flex flex-col overflow-hidden min-h-[260px]">
         {receipts.length === 0 ? (
           <div className="text-center py-12 text-sm text-muted-foreground">Chưa có phiếu chuyển kho nào.</div>
         ) : (
-          <Table>
+          <Table containerClassName="flex-1 min-h-0">
             <TableHeader>
               <TableRow>
                 <TableHead>Mã phiếu</TableHead>
@@ -88,6 +98,17 @@ export default async function TransferListPage() {
             </TableBody>
           </Table>
         )}
+
+        <Pagination
+          basePath="/chuyen-kho"
+          page={meta.page}
+          pageCount={meta.pageCount}
+          pageSize={meta.pageSize}
+          total={meta.total}
+          from={meta.from}
+          to={meta.to}
+          itemLabel="phiếu"
+        />
       </Card>
     </div>
   );

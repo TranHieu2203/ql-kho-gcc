@@ -23,7 +23,7 @@ export default async function OutboundDetailPage({ params }: { params: { id: str
   const totalQty = r.lines.reduce((s, l) => s + l.quantity, 0);
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl space-y-4">
+    <div className="h-full overflow-auto p-4 md:p-6 max-w-4xl space-y-4">
       <Link href="/xuat-kho" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft className="w-4 h-4" />Quay lại
       </Link>

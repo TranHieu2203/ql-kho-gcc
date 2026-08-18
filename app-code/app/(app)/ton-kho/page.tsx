@@ -6,10 +6,14 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatNumber } from '@/lib/utils';
 import { CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { Pagination } from '@/components/ui/pagination';
+import { parsePaging, pageMeta } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 
-export default async function StockPage({ searchParams }: { searchParams: { q?: string } }) {
+type SearchParams = { q?: string; page?: string; pageSize?: string };
+
+export default async function StockPage({ searchParams }: { searchParams: SearchParams }) {
   const { user } = await validateRequest();
   if (!user) redirect('/login');
   const q = (searchParams.q ?? '').trim();
@@ -20,25 +24,34 @@ export default async function StockPage({ searchParams }: { searchParams: { q?: 
         prisma.warehouse.findMany({ where: { id: { in: ids.map((w) => w.id) }, active: true }, orderBy: { code: 'asc' } })
       );
 
+  const where = q
+    ? {
+        active: true,
+        OR: [
+          { sku: { contains: q } },
+          { brand: { contains: q } },
+          { size: { contains: q } },
+          { pattern: { contains: q } }
+        ]
+      }
+    : { active: true };
+
+  const paging = parsePaging(searchParams);
+  const total = await prisma.product.count({ where });
+  const meta = pageMeta(total, paging);
+
   const products = await prisma.product.findMany({
-    where: q
-      ? {
-          active: true,
-          OR: [
-            { sku: { contains: q } },
-            { brand: { contains: q } },
-            { size: { contains: q } },
-            { pattern: { contains: q } }
-          ]
-        }
-      : { active: true },
-    orderBy: { sku: 'asc' }
+    where,
+    orderBy: { sku: 'asc' },
+    skip: (meta.page - 1) * meta.pageSize,
+    take: meta.pageSize
   });
 
   const whIds = warehouses.map((w) => w.id);
+  // Chỉ tính tồn cho các sản phẩm đang hiển thị trên trang này
   const movements = await prisma.stockMovement.groupBy({
     by: ['warehouseId', 'productId'],
-    where: { warehouseId: { in: whIds } },
+    where: { warehouseId: { in: whIds }, productId: { in: products.map((p) => p.id) } },
     _sum: { qtyDelta: true }
   });
 
@@ -48,15 +61,16 @@ export default async function StockPage({ searchParams }: { searchParams: { q?: 
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="h-full min-h-0 flex flex-col gap-4 overflow-y-auto p-4 md:p-6">
       <div>
         <h1 className="text-2xl font-bold">Tồn kho hiện tại</h1>
-        <p className="text-sm text-muted-foreground mt-1">{products.length} sản phẩm · {warehouses.length} kho</p>
+        <p className="text-sm text-muted-foreground mt-1">{total} sản phẩm · {warehouses.length} kho</p>
       </div>
 
-      <Card>
-        <div className="p-4 border-b">
+      <Card className="flex-1 flex flex-col overflow-hidden min-h-[260px]">
+        <div className="p-4 border-b flex-shrink-0">
           <form>
+            {searchParams.pageSize && <input type="hidden" name="pageSize" value={searchParams.pageSize} />}
             <input
               type="search"
               name="q"
@@ -66,7 +80,7 @@ export default async function StockPage({ searchParams }: { searchParams: { q?: 
             />
           </form>
         </div>
-        <Table>
+        <Table containerClassName="flex-1 min-h-0">
           <TableHeader>
             <TableRow>
               <TableHead>Mã hàng</TableHead>
@@ -113,6 +127,18 @@ export default async function StockPage({ searchParams }: { searchParams: { q?: 
             })}
           </TableBody>
         </Table>
+
+        <Pagination
+          basePath="/ton-kho"
+          params={{ q: q || undefined }}
+          page={meta.page}
+          pageCount={meta.pageCount}
+          pageSize={meta.pageSize}
+          total={meta.total}
+          from={meta.from}
+          to={meta.to}
+          itemLabel="sản phẩm"
+        />
       </Card>
     </div>
   );

@@ -14,7 +14,7 @@ export default async function ClearDataPage() {
   const counts = await getCountsServer();
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl space-y-6">
+    <div className="h-full overflow-auto p-4 md:p-6 max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-danger-strong">Xóa dữ liệu hệ thống</h1>
         <p className="text-sm text-muted-foreground mt-1">

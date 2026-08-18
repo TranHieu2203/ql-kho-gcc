@@ -8,6 +8,8 @@ import { Download, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { formatNumber } from '@/lib/utils';
 import { runNxtReport, type NxtFilters } from '@/lib/domain/nxt-report';
+import { Pagination } from '@/components/ui/pagination';
+import { parsePaging, pageMeta } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +24,8 @@ type SearchParams = {
   stockState?: string;
   activeOnly?: string;
   sort?: string;
+  page?: string;
+  pageSize?: string;
 };
 
 function today(): string {
@@ -59,17 +63,24 @@ export default async function NxtReportPage({ searchParams }: { searchParams: Se
 
   const result = await runNxtReport(filters, userWhIds);
 
-  // Build export URL from all current searchParams
+  // Phân trang chỉ ảnh hưởng hiển thị; số liệu tổng và file Excel vẫn tính trên toàn bộ kết quả.
+  const paging = parsePaging(searchParams);
+  const meta = pageMeta(result.rows.length, paging);
+  const pageRows = result.rows.slice((meta.page - 1) * meta.pageSize, meta.page * meta.pageSize);
+
+  // Build export URL from all current searchParams (bỏ page/pageSize — export lấy hết)
   const exportQs = new URLSearchParams();
-  Object.entries(searchParams).forEach(([k, v]) => { if (v) exportQs.set(k, v); });
+  Object.entries(searchParams).forEach(([k, v]) => {
+    if (v && k !== 'page' && k !== 'pageSize') exportQs.set(k, v);
+  });
   const exportHref = `/api/reports/nxt.xlsx?${exportQs.toString()}`;
 
   const preset = filters.preset ?? 'month';
   const showCustom = preset === 'custom';
-  const activeCount = Object.values(searchParams).filter(Boolean).length;
+  const activeCount = Object.entries(searchParams).filter(([k, v]) => v && k !== 'page' && k !== 'pageSize').length;
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="h-full min-h-0 flex flex-col gap-4 overflow-y-auto p-4 md:p-6">
       <div className="flex items-baseline justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold">Báo cáo Nhập – Xuất – Tồn</h1>
@@ -87,8 +98,8 @@ export default async function NxtReportPage({ searchParams }: { searchParams: Se
         </div>
       </div>
 
-      <Card>
-        <form className="p-4 space-y-4 border-b">
+      <Card className="flex-1 flex flex-col overflow-hidden min-h-[260px]">
+        <form className="p-4 space-y-4 border-b flex-shrink-0 overflow-y-auto max-h-[45%]">
           {/* Row 1: kỳ + kho */}
           <div className="grid md:grid-cols-4 gap-3">
             <div className="space-y-1.5">
@@ -224,7 +235,7 @@ export default async function NxtReportPage({ searchParams }: { searchParams: Se
           </div>
         </form>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 divide-x border-b text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-x border-b text-sm flex-shrink-0">
           <div className="p-4">
             <div className="text-muted-foreground text-xs">Số SKU</div>
             <div className="font-mono text-xl font-bold mt-1">{result.rows.length}</div>
@@ -243,7 +254,7 @@ export default async function NxtReportPage({ searchParams }: { searchParams: Se
           </div>
         </div>
 
-        <Table>
+        <Table containerClassName="flex-1 min-h-0">
           <TableHeader>
             <TableRow>
               <TableHead className="w-10">TT</TableHead>
@@ -272,11 +283,11 @@ export default async function NxtReportPage({ searchParams }: { searchParams: Se
                 </TableCell>
               </TableRow>
             )}
-            {result.rows.map((r, i) => {
+            {pageRows.map((r, i) => {
               const st = r.closing <= 0 ? 'out' : r.closing < r.lowStockThreshold ? 'low' : 'ok';
               return (
                 <TableRow key={r.sku}>
-                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>{(meta.page - 1) * meta.pageSize + i + 1}</TableCell>
                   <TableCell className="font-mono">{r.sku}</TableCell>
                   <TableCell>{r.brand}</TableCell>
                   <TableCell>{r.size}</TableCell>
@@ -294,6 +305,29 @@ export default async function NxtReportPage({ searchParams }: { searchParams: Se
             })}
           </TableBody>
         </Table>
+
+        <Pagination
+          basePath="/bao-cao/nxt"
+          params={{
+            preset: searchParams.preset,
+            month: searchParams.month,
+            from: searchParams.from,
+            to: searchParams.to,
+            warehouseId: searchParams.warehouseId,
+            q: searchParams.q,
+            brand: searchParams.brand,
+            stockState: searchParams.stockState,
+            activeOnly: searchParams.activeOnly,
+            sort: searchParams.sort
+          }}
+          page={meta.page}
+          pageCount={meta.pageCount}
+          pageSize={meta.pageSize}
+          total={meta.total}
+          from={meta.from}
+          to={meta.to}
+          itemLabel="mặt hàng"
+        />
       </Card>
     </div>
   );

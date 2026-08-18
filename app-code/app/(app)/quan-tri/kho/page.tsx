@@ -6,35 +6,45 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, ChevronLeft, Pencil } from 'lucide-react';
+import { Pagination } from '@/components/ui/pagination';
+import { parsePaging, pageMeta } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminWarehousesPage() {
+type SearchParams = { page?: string; pageSize?: string };
+
+export default async function AdminWarehousesPage({ searchParams }: { searchParams: SearchParams }) {
   const { user } = await validateRequest();
   if (!user || user.role !== 'ADMIN') redirect('/tong-quan');
 
+  const paging = parsePaging(searchParams);
+  const total = await prisma.warehouse.count();
+  const meta = pageMeta(total, paging);
+
   const warehouses = await prisma.warehouse.findMany({
     orderBy: { createdAt: 'asc' },
+    skip: (meta.page - 1) * meta.pageSize,
+    take: meta.pageSize,
     include: { _count: { select: { receipts: true, userLinks: true } } }
   });
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="h-full min-h-0 flex flex-col gap-4 overflow-y-auto p-4 md:p-6">
       <Link href="/quan-tri" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft className="w-4 h-4" />Quay lại quản trị
       </Link>
       <div className="flex items-baseline justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Quản lý kho</h1>
-          <p className="text-sm text-muted-foreground mt-1">{warehouses.length} kho</p>
+          <p className="text-sm text-muted-foreground mt-1">{total} kho</p>
         </div>
         <Button asChild>
           <Link href="/quan-tri/kho/them"><Plus className="w-4 h-4" />Thêm kho</Link>
         </Button>
       </div>
 
-      <Card>
-        <Table>
+      <Card className="flex-1 flex flex-col overflow-hidden min-h-[260px]">
+        <Table containerClassName="flex-1 min-h-0">
           <TableHeader>
             <TableRow>
               <TableHead>Mã kho</TableHead>
@@ -66,6 +76,17 @@ export default async function AdminWarehousesPage() {
             ))}
           </TableBody>
         </Table>
+
+        <Pagination
+          basePath="/quan-tri/kho"
+          page={meta.page}
+          pageCount={meta.pageCount}
+          pageSize={meta.pageSize}
+          total={meta.total}
+          from={meta.from}
+          to={meta.to}
+          itemLabel="kho"
+        />
       </Card>
     </div>
   );

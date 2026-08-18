@@ -28,7 +28,11 @@ export default async function EditOutboundPage({ params }: { params: { id: strin
   const warehouses = user.role === 'ADMIN'
     ? await prisma.warehouse.findMany({ where: { active: true }, orderBy: { code: 'asc' } })
     : await getUserWarehouses(user.id);
-  const products = await prisma.product.findMany({ where: { active: true }, orderBy: { sku: 'asc' } });
+  // Gồm cả mặt hàng đã ngừng áp dụng nhưng đang có trên phiếu, để dòng cũ không bị mất khi sửa.
+  const products = await prisma.product.findMany({
+    where: { OR: [{ active: true }, { id: { in: r.lines.map((l) => l.productId) } }] },
+    orderBy: { sku: 'asc' }
+  });
 
   const initial = {
     warehouseId: r.warehouseId,
@@ -46,7 +50,7 @@ export default async function EditOutboundPage({ params }: { params: { id: strin
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl">
+    <div className="h-full overflow-auto p-4 md:p-6 max-w-5xl">
       <Link href={`/xuat-kho/${r.id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ChevronLeft className="w-4 h-4" />Quay lại chi tiết phiếu
       </Link>

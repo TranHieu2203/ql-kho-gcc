@@ -6,30 +6,39 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChevronLeft } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
+import { Pagination } from '@/components/ui/pagination';
+import { parsePaging, pageMeta } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AuditLogPage() {
+type SearchParams = { page?: string; pageSize?: string };
+
+export default async function AuditLogPage({ searchParams }: { searchParams: SearchParams }) {
   const { user } = await validateRequest();
   if (!user || user.role !== 'ADMIN') redirect('/tong-quan');
 
+  const paging = parsePaging(searchParams);
+  const total = await prisma.auditLog.count();
+  const meta = pageMeta(total, paging);
+
   const logs = await prisma.auditLog.findMany({
     orderBy: { createdAt: 'desc' },
-    take: 200,
+    skip: (meta.page - 1) * meta.pageSize,
+    take: meta.pageSize,
     include: { user: { select: { username: true, fullName: true } } }
   });
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="h-full min-h-0 flex flex-col gap-4 overflow-y-auto p-4 md:p-6">
       <Link href="/quan-tri" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft className="w-4 h-4" />Quay lại
       </Link>
       <div>
         <h1 className="text-2xl font-bold">Audit log</h1>
-        <p className="text-sm text-muted-foreground mt-1">Hiển thị 200 mục mới nhất</p>
+        <p className="text-sm text-muted-foreground mt-1">{total} mục</p>
       </div>
-      <Card>
-        <Table>
+      <Card className="flex-1 flex flex-col overflow-hidden min-h-[260px]">
+        <Table containerClassName="flex-1 min-h-0">
           <TableHeader>
             <TableRow>
               <TableHead>Thời gian</TableHead>
@@ -51,6 +60,17 @@ export default async function AuditLogPage() {
             ))}
           </TableBody>
         </Table>
+
+        <Pagination
+          basePath="/quan-tri/audit-log"
+          page={meta.page}
+          pageCount={meta.pageCount}
+          pageSize={meta.pageSize}
+          total={meta.total}
+          from={meta.from}
+          to={meta.to}
+          itemLabel="mục"
+        />
       </Card>
     </div>
   );

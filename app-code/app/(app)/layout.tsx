@@ -13,14 +13,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex bg-background">
+      {/* h-screen + overflow-hidden: khung app cố định, chỉ vùng dữ liệu bên trong mới cuộn.
+          mb-16 md:mb-0 chừa chỗ cho bottom-nav (fixed, h-16) trên mobile. */}
+      <div className="h-screen overflow-hidden flex bg-background">
         <Sidebar role={user.role} />
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           <Topbar
             user={{ id: user.id, username: user.username, fullName: user.fullName, role: user.role }}
             warehouses={warehouses}
           />
-          <main className="flex-1 overflow-auto pb-20 md:pb-0" role="main">
+          <main className="flex-1 min-h-0 overflow-hidden mb-16 md:mb-0" role="main">
             {children}
           </main>
         </div>

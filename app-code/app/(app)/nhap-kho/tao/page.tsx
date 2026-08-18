@@ -16,7 +16,7 @@ export default async function NewInboundPage() {
   const products = await prisma.product.findMany({ where: { active: true }, orderBy: { sku: 'asc' } });
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl">
+    <div className="h-full overflow-auto p-4 md:p-6 max-w-5xl">
       <Link href="/nhap-kho" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ChevronLeft className="w-4 h-4" />Quay lại danh sách
       </Link>

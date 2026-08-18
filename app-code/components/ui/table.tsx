@@ -1,17 +1,38 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
-      <table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />
-    </div>
-  )
-);
+/**
+ * containerClassName: class cho khung cuộn bao ngoài <table>.
+ * Trang danh sách truyền "flex-1 min-h-0" để chỉ vùng dữ liệu cuộn,
+ * còn header trang / bộ lọc / phân trang đứng yên.
+ */
+const Table = React.forwardRef<
+  HTMLTableElement,
+  React.HTMLAttributes<HTMLTableElement> & { containerClassName?: string }
+>(({ className, containerClassName, ...props }, ref) => (
+  <div className={cn('relative w-full overflow-auto', containerClassName)}>
+    <table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />
+  </div>
+));
 Table.displayName = 'Table';
 
+/**
+ * Header dính khi cuộn. Border-collapse làm mất border của <th> khi sticky,
+ * nên dùng inset shadow thay cho đường kẻ dưới, và nền đục để không lộ dòng chạy phía sau.
+ */
 const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
-  ({ className, ...props }, ref) => <thead ref={ref} className={cn('bg-muted/60 [&_tr]:border-b', className)} {...props} />
+  ({ className, ...props }, ref) => (
+    <thead
+      ref={ref}
+      className={cn(
+        '[&_tr]:border-b',
+        '[&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-muted',
+        '[&_th]:shadow-[inset_0_-1px_0_hsl(var(--border))]',
+        className
+      )}
+      {...props}
+    />
+  )
 );
 TableHeader.displayName = 'TableHeader';
 
