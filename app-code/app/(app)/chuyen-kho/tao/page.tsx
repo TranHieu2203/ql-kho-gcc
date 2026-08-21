@@ -15,13 +15,15 @@ export default async function NewTransferPage() {
   const products = await prisma.product.findMany({ where: { active: true }, orderBy: { sku: 'asc' } });
 
   return (
-    <div className="h-full overflow-auto p-4 md:p-6 max-w-5xl">
+    <div className="h-full overflow-auto">
+      <div className="p-4 md:p-6 max-w-5xl">
       <Link href="/chuyen-kho" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ChevronLeft className="w-4 h-4" />Quay lại danh sách
       </Link>
       <h1 className="text-2xl font-bold mb-1">Tạo phiếu chuyển kho</h1>
       <p className="text-sm text-muted-foreground mb-6">Phiếu sẽ ở trạng thái "Đang đi". Kho đến cần xác nhận nhận hàng để hoàn tất.</p>
       <ReceiptForm type="TRANSFER" products={products} warehouses={warehouses} action={createTransferReceipt} />
+      </div>
     </div>
   );
 }

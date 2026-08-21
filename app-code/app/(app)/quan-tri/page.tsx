@@ -20,7 +20,8 @@ export default async function AdminPage() {
   if (user.role !== 'ADMIN') redirect('/tong-quan');
 
   return (
-    <div className="h-full overflow-auto p-4 md:p-6 space-y-6">
+    <div className="h-full overflow-auto">
+      <div className="p-4 md:p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Quản trị hệ thống</h1>
         <p className="text-sm text-muted-foreground mt-1">Chỉ tài khoản quản trị mới truy cập được khu vực này.</p>
@@ -43,6 +44,7 @@ export default async function AdminPage() {
             </Link>
           );
         })}
+      </div>
       </div>
     </div>
   );

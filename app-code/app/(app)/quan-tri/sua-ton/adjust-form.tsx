@@ -252,7 +252,9 @@ export function AdjustStockForm({
 
       {error && <div role="alert" className="text-sm text-danger-strong bg-danger-soft rounded-md p-3">{error}</div>}
 
-      <div className="flex items-center gap-2 sticky bottom-0 bg-background border-t -mx-4 md:-mx-6 px-4 md:px-6 py-3">
+      {/* -mx / -mb triet tieu padding cua hop noi dung: thieu -mb thi thanh nut bi chan
+          cao hon day dung bang padding-bottom, de lo mot dai noi dung troi ben duoi. */}
+      <div className="flex items-center gap-2 sticky bottom-0 bg-background border-t -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6 py-3">
         <Button type="submit" variant="default" disabled={pending}>
           {pending ? 'Đang lưu...' : 'Lưu điều chỉnh tồn'}
         </Button>

@@ -20,7 +20,8 @@ export default async function AdjustStockPage() {
   ]);
 
   return (
-    <div className="h-full overflow-auto p-4 md:p-6 max-w-5xl space-y-6">
+    <div className="h-full overflow-auto">
+      <div className="p-4 md:p-6 max-w-5xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Sửa tồn cuối (kiểm kê)</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -38,6 +39,7 @@ export default async function AdjustStockPage() {
       </div>
 
       <AdjustStockForm warehouses={warehouses} products={products as any} />
+      </div>
     </div>
   );
 }

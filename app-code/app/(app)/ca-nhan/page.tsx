@@ -8,7 +8,8 @@ export default async function ProfilePage() {
   if (!user) redirect('/login');
 
   return (
-    <div className="h-full overflow-auto p-4 md:p-6 max-w-2xl space-y-4">
+    <div className="h-full overflow-auto">
+      <div className="p-4 md:p-6 max-w-2xl space-y-4">
       <h1 className="text-2xl font-bold">Hồ sơ cá nhân</h1>
       <Card>
         <CardHeader>
@@ -28,6 +29,7 @@ export default async function ProfilePage() {
           <ChangePasswordForm />
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

@@ -15,12 +15,14 @@ export default async function NewOutboundPage() {
   const products = await prisma.product.findMany({ where: { active: true }, orderBy: { sku: 'asc' } });
 
   return (
-    <div className="h-full overflow-auto p-4 md:p-6 max-w-5xl">
+    <div className="h-full overflow-auto">
+      <div className="p-4 md:p-6 max-w-5xl">
       <Link href="/xuat-kho" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ChevronLeft className="w-4 h-4" />Quay lại danh sách
       </Link>
       <h1 className="text-2xl font-bold mb-6">Tạo phiếu xuất</h1>
       <ReceiptForm type="OUTBOUND" products={products} warehouses={warehouses} action={createOutboundReceipt} />
+      </div>
     </div>
   );
 }

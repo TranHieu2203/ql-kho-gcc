@@ -14,7 +14,8 @@ export default async function BackupPage() {
   const isConfigured = !!cfg.saJson && !!cfg.spreadsheetId;
 
   return (
-    <div className="h-full overflow-auto p-4 md:p-6 max-w-4xl space-y-6">
+    <div className="h-full overflow-auto">
+      <div className="p-4 md:p-6 max-w-4xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Backup lên Google Sheets</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -51,6 +52,7 @@ export default async function BackupPage() {
           💡 <strong>Schedule tự động</strong>: lựa chọn bên dưới chỉ được ghi lại; người bấm nút thực sự là service <code className="bg-card px-1 rounded">cron</code> trong docker-compose, nó gọi <code className="bg-card px-1 rounded">/api/cron/backup</code> định kỳ. Muốn chạy tự động thì <strong>bắt buộc</strong> phải set <code className="bg-card px-1 rounded">CRON_SECRET</code> trong <code className="bg-card px-1 rounded">.env</code> — để rỗng là job không bao giờ chạy. Kiểm tra bằng <code className="bg-card px-1 rounded">docker compose logs cron</code>.
         </p>
       </details>
+      </div>
     </div>
   );
 }

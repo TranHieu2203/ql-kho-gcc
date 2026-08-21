@@ -50,7 +50,8 @@ export default async function EditOutboundPage({ params }: { params: { id: strin
   };
 
   return (
-    <div className="h-full overflow-auto p-4 md:p-6 max-w-5xl">
+    <div className="h-full overflow-auto">
+      <div className="p-4 md:p-6 max-w-5xl">
       <Link href={`/xuat-kho/${r.id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ChevronLeft className="w-4 h-4" />Quay lại chi tiết phiếu
       </Link>
@@ -65,6 +66,7 @@ export default async function EditOutboundPage({ params }: { params: { id: strin
         warehouses={warehouses}
         initial={initial}
       />
+      </div>
     </div>
   );
 }

@@ -12,6 +12,11 @@ Font.register({
   ]
 });
 
+// Do rong cot bang bien ban (%). Tong phai = 100.
+// O "Tong" gop 3 cot dau nen chieu rong lay tu day, khong hardcode -> khong lech cot.
+const BB_COL = { stt: 7, sku: 20, name: 38, unit: 15, qty: 20 } as const;
+const BB_TOTAL_LABEL_WIDTH = `${BB_COL.stt + BB_COL.sku + BB_COL.name}%`;
+
 const styles = StyleSheet.create({
   page: { fontFamily: 'Roboto', fontSize: 10, padding: 40, paddingBottom: 60, color: '#1B1F26' },
   // Legacy header (INBOUND / TRANSFER / ADJUSTMENT)
@@ -71,11 +76,11 @@ const styles = StyleSheet.create({
   bbThLast: { padding: 10, fontSize: 14, fontWeight: 700, textAlign: 'center' },
   bbTd: { padding: 8, fontSize: 14, borderRightWidth: 1, borderRightColor: '#000', borderRightStyle: 'solid', justifyContent: 'center' },
   bbTdLast: { padding: 8, fontSize: 14, justifyContent: 'center' },
-  bbColStt: { width: '7%', textAlign: 'center' },
-  bbColSku: { width: '20%' },
-  bbColName: { width: '38%' },
-  bbColUnit: { width: '15%', textAlign: 'center' },
-  bbColQty: { width: '20%', textAlign: 'center' },
+  bbColStt: { width: `${BB_COL.stt}%`, textAlign: 'center' },
+  bbColSku: { width: `${BB_COL.sku}%` },
+  bbColName: { width: `${BB_COL.name}%` },
+  bbColUnit: { width: `${BB_COL.unit}%`, textAlign: 'center' },
+  bbColQty: { width: `${BB_COL.qty}%`, textAlign: 'center' },
   bbTotalCell: { padding: 8, fontSize: 14, fontWeight: 700, textAlign: 'center', borderRightWidth: 1, borderRightColor: '#000', borderRightStyle: 'solid', justifyContent: 'center' },
   bbSignRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 40 },
   bbSignCell: { width: '30%', alignItems: 'center' },
@@ -174,7 +179,7 @@ function BienBanDoc({ data }: { data: ReceiptPdfData }) {
             </View>
           ))}
           <View style={styles.bbTrLast} wrap={false}>
-            <Text style={[styles.bbTotalCell, { width: '68%' }]}>Tổng</Text>
+            <Text style={[styles.bbTotalCell, { width: BB_TOTAL_LABEL_WIDTH }]}>Tổng</Text>
             <Text style={[styles.bbTotalCell, styles.bbColUnit]}>{totalUnit}</Text>
             <Text style={[styles.bbTdLast, styles.bbColQty, { fontWeight: 700, textAlign: 'center' }]}>{total}</Text>
           </View>

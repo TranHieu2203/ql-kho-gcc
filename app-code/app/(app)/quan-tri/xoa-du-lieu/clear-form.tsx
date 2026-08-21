@@ -229,7 +229,9 @@ export function ClearDataForm({ counts, adminUsername }: { counts: Counts; admin
         </div>
       )}
 
-      <div className="flex items-center gap-2 sticky bottom-0 bg-background border-t -mx-4 md:-mx-6 px-4 md:px-6 py-3">
+      {/* -mx / -mb triet tieu padding cua hop noi dung: thieu -mb thi thanh nut bi chan
+          cao hon day dung bang padding-bottom, de lo mot dai noi dung troi ben duoi. */}
+      <div className="flex items-center gap-2 sticky bottom-0 bg-background border-t -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6 py-3">
         <Button
           type="submit"
           variant="destructive"

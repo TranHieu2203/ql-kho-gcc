@@ -16,7 +16,8 @@ export default async function SettingsPage() {
   const map = Object.fromEntries(settings.map((s) => [s.key, s.value]));
 
   return (
-    <div className="h-full overflow-auto p-4 md:p-6 max-w-2xl space-y-4">
+    <div className="h-full overflow-auto">
+      <div className="p-4 md:p-6 max-w-2xl space-y-4">
       <Link href="/quan-tri" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft className="w-4 h-4" />Quay lại
       </Link>
@@ -29,6 +30,7 @@ export default async function SettingsPage() {
           <SettingsForm settings={map} />
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
