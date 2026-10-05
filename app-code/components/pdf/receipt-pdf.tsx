@@ -11,10 +11,12 @@ Font.register({
     { src: path.join(process.cwd(), 'public', 'fonts', 'roboto-vi-700.woff'), fontWeight: 700 }
   ]
 });
+// Tắt tự gạch nối kiểu tiếng Anh ("Du-eler"): chỉ xuống dòng ở khoảng trắng.
+Font.registerHyphenationCallback((word) => [word]);
 
 // Do rong cot bang bien ban (%). Tong phai = 100.
 // O "Tong" gop 3 cot dau nen chieu rong lay tu day, khong hardcode -> khong lech cot.
-const BB_COL = { stt: 7, sku: 20, name: 38, unit: 15, qty: 20 } as const;
+const BB_COL = { stt: 8, sku: 26, name: 36, unit: 15, qty: 15 } as const;
 const BB_TOTAL_LABEL_WIDTH = `${BB_COL.stt + BB_COL.sku + BB_COL.name}%`;
 
 const styles = StyleSheet.create({
@@ -60,31 +62,33 @@ const styles = StyleSheet.create({
     paddingTop: 6
   },
 
-  // Outbound "Biên bản giao nhận" layout — landscape, font lớn
-  bbPage: { fontFamily: 'Roboto', fontSize: 14, padding: 40, paddingBottom: 60, color: '#000' },
-  bbCompany: { fontSize: 20, fontWeight: 700, textAlign: 'center' },
-  bbAddress: { fontSize: 14, textAlign: 'center', marginTop: 8 },
-  bbBank: { fontSize: 14, textAlign: 'center', marginTop: 4 },
-  bbTitle: { fontSize: 20, fontWeight: 700, textAlign: 'center', marginTop: 18 },
-  bbMetaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 },
+  // "Biên bản giao nhận" layout (OUTBOUND + INBOUND) — A4 dọc, font 12
+  bbPage: { fontFamily: 'Roboto', fontSize: 12, padding: 36, paddingBottom: 56, color: '#000' },
+  bbCompany: { fontSize: 17, fontWeight: 700, textAlign: 'center' },
+  bbAddress: { fontSize: 12, textAlign: 'center', marginTop: 6 },
+  bbBank: { fontSize: 12, textAlign: 'center', marginTop: 3 },
+  bbTitle: { fontSize: 17, fontWeight: 700, textAlign: 'center', marginTop: 16 },
+  bbMetaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
   bbMetaCol: { flexDirection: 'column' },
-  bbMetaLine: { fontSize: 14, marginTop: 4 },
-  bbTable: { marginTop: 18, borderWidth: 1, borderColor: '#000', borderStyle: 'solid' },
-  bbTr: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', borderBottomStyle: 'solid', minHeight: 40 },
-  bbTrLast: { flexDirection: 'row', minHeight: 40 },
-  bbTh: { padding: 10, fontSize: 14, fontWeight: 700, textAlign: 'center', borderRightWidth: 1, borderRightColor: '#000', borderRightStyle: 'solid' },
-  bbThLast: { padding: 10, fontSize: 14, fontWeight: 700, textAlign: 'center' },
-  bbTd: { padding: 8, fontSize: 14, borderRightWidth: 1, borderRightColor: '#000', borderRightStyle: 'solid', justifyContent: 'center' },
-  bbTdLast: { padding: 8, fontSize: 14, justifyContent: 'center' },
+  bbMetaLine: { fontSize: 12, marginTop: 4 },
+  // Viền kẻ trên từng dòng (không viền khung ngoài) để khi sang trang không kéo khung trống tới cuối trang
+  bbTable: { marginTop: 14 },
+  bbTr: { flexDirection: 'row', borderWidth: 1, borderTopWidth: 0, borderColor: '#000', borderStyle: 'solid', minHeight: 28 },
+  bbTrHead: { borderTopWidth: 1 },
+  bbTrLast: { flexDirection: 'row', borderWidth: 1, borderTopWidth: 0, borderColor: '#000', borderStyle: 'solid', minHeight: 28 },
+  bbTh: { padding: 6, fontSize: 12, fontWeight: 700, textAlign: 'center', borderRightWidth: 1, borderRightColor: '#000', borderRightStyle: 'solid' },
+  bbThLast: { padding: 6, fontSize: 12, fontWeight: 700, textAlign: 'center' },
+  bbTd: { padding: 6, fontSize: 12, borderRightWidth: 1, borderRightColor: '#000', borderRightStyle: 'solid', justifyContent: 'center' },
+  bbTdLast: { padding: 6, fontSize: 12, justifyContent: 'center' },
   bbColStt: { width: `${BB_COL.stt}%`, textAlign: 'center' },
   bbColSku: { width: `${BB_COL.sku}%` },
   bbColName: { width: `${BB_COL.name}%` },
   bbColUnit: { width: `${BB_COL.unit}%`, textAlign: 'center' },
   bbColQty: { width: `${BB_COL.qty}%`, textAlign: 'center' },
-  bbTotalCell: { padding: 8, fontSize: 14, fontWeight: 700, textAlign: 'center', borderRightWidth: 1, borderRightColor: '#000', borderRightStyle: 'solid', justifyContent: 'center' },
-  bbSignRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 40 },
-  bbSignCell: { width: '30%', alignItems: 'center' },
-  bbSignLabel: { fontSize: 14, fontWeight: 400 }
+  bbTotalCell: { padding: 6, fontSize: 12, fontWeight: 700, textAlign: 'center', borderRightWidth: 1, borderRightColor: '#000', borderRightStyle: 'solid', justifyContent: 'center' },
+  bbSignRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 32 },
+  bbSignCell: { width: '32%', alignItems: 'center' },
+  bbSignLabel: { fontSize: 12, fontWeight: 400 }
 });
 
 const TYPE_LABEL: Record<string, string> = {
@@ -137,7 +141,7 @@ function BienBanDoc({ data }: { data: ReceiptPdfData }) {
 
   return (
     <Document title={`${codeShown} — Biên bản giao nhận hàng hoá`} author={c.name ?? 'QL Kho Lốp'}>
-      <Page size="A4" orientation="landscape" style={styles.bbPage}>
+      <Page size="A4" style={styles.bbPage}>
         {c.name ? <Text style={styles.bbCompany}>{c.name}</Text> : null}
         {c.address ? <Text style={styles.bbAddress}>Địa chỉ: {c.address}</Text> : null}
         {c.bank ? <Text style={styles.bbBank}>STK: {c.bank}</Text> : null}
@@ -162,7 +166,7 @@ function BienBanDoc({ data }: { data: ReceiptPdfData }) {
         </View>
 
         <View style={styles.bbTable}>
-          <View style={styles.bbTr} fixed>
+          <View style={[styles.bbTr, styles.bbTrHead]} fixed>
             <Text style={[styles.bbTh, styles.bbColStt]}>STT</Text>
             <Text style={[styles.bbTh, styles.bbColSku]}>Mã hàng</Text>
             <Text style={[styles.bbTh, styles.bbColName]}>Tên hàng hóa</Text>
