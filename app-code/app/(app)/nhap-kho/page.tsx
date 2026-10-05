@@ -9,19 +9,23 @@ import { validateRequest, getUserWarehouses } from '@/lib/auth/lucia';
 import { redirect } from 'next/navigation';
 import { Pagination } from '@/components/ui/pagination';
 import { parsePaging, pageMeta } from '@/lib/pagination';
+import { buildReceiptListWhere, receiptFilterParams, countActiveFilters, type ReceiptListSearchParams } from '@/lib/receipt-list-filters';
+import { ReceiptListFilters } from '@/components/receipts/receipt-list-filters';
 
 export const dynamic = 'force-dynamic';
 
-type SearchParams = { page?: string; pageSize?: string };
+type SearchParams = ReceiptListSearchParams;
 
 export default async function InboundListPage({ searchParams }: { searchParams: SearchParams }) {
   const { user } = await validateRequest();
   if (!user) redirect('/login');
   const myWh = user.role === 'ADMIN'
-    ? await prisma.warehouse.findMany({ select: { id: true } })
-    : (await getUserWarehouses(user.id)).map((w) => ({ id: w.id }));
+    ? await prisma.warehouse.findMany({ select: { id: true, code: true, name: true }, orderBy: { code: 'asc' } })
+    : await getUserWarehouses(user.id);
 
-  const where = { type: 'INBOUND', warehouseId: { in: myWh.map((w) => w.id) } };
+  const where = buildReceiptListWhere('INBOUND', searchParams, myWh.map((w) => w.id));
+  const filterParams = receiptFilterParams(searchParams);
+  const activeCount = countActiveFilters(filterParams);
   const paging = parsePaging(searchParams);
   const total = await prisma.receipt.count({ where });
   const meta = pageMeta(total, paging);
@@ -51,13 +55,26 @@ export default async function InboundListPage({ searchParams }: { searchParams: 
       </div>
 
       <Card className="flex flex-col md:flex-1 md:overflow-hidden md:min-h-[320px]">
+        <ReceiptListFilters
+          basePath="/nhap-kho"
+          searchParams={searchParams}
+          warehouses={myWh}
+          partnerLabel="Mã phiếu / Nhà cung cấp"
+          activeCount={activeCount}
+        />
         {receipts.length === 0 ? (
-          <div className="text-center py-12 px-4">
-            <p className="text-sm text-muted-foreground mb-4">Chưa có phiếu nhập nào.</p>
-            <Button asChild>
-              <Link href="/nhap-kho/tao">Tạo phiếu nhập đầu tiên</Link>
-            </Button>
-          </div>
+          activeCount > 0 ? (
+            <div className="text-center py-12 px-4 text-sm text-muted-foreground">
+              Không có phiếu nhập phù hợp. Thử bỏ bớt điều kiện lọc.
+            </div>
+          ) : (
+            <div className="text-center py-12 px-4">
+              <p className="text-sm text-muted-foreground mb-4">Chưa có phiếu nhập nào.</p>
+              <Button asChild>
+                <Link href="/nhap-kho/tao">Tạo phiếu nhập đầu tiên</Link>
+              </Button>
+            </div>
+          )
         ) : (
           <Table containerClassName="md:flex-1 md:min-h-0">
             <TableHeader>
@@ -65,6 +82,7 @@ export default async function InboundListPage({ searchParams }: { searchParams: 
                 <TableHead>Mã phiếu</TableHead>
                 <TableHead>Ngày</TableHead>
                 <TableHead>Kho</TableHead>
+                <TableHead>Nhà cung cấp</TableHead>
                 <TableHead className="text-right">Tổng SL</TableHead>
                 <TableHead className="text-right">Số dòng</TableHead>
                 <TableHead>Người tạo</TableHead>
@@ -78,6 +96,7 @@ export default async function InboundListPage({ searchParams }: { searchParams: 
                     <TableCell><Link href={`/nhap-kho/${r.id}`} className="font-mono font-medium text-primary hover:underline">{r.code}</Link></TableCell>
                     <TableCell>{formatDate(r.date)}</TableCell>
                     <TableCell>{r.warehouse.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.customerOrPartner ?? '—'}</TableCell>
                     <TableCell className="text-right font-mono">{formatNumber(totalQty)}</TableCell>
                     <TableCell className="text-right font-mono">{r.lines.length}</TableCell>
                     <TableCell>{r.createdBy.fullName}</TableCell>
@@ -90,6 +109,7 @@ export default async function InboundListPage({ searchParams }: { searchParams: 
 
         <Pagination
           basePath="/nhap-kho"
+          params={filterParams}
           page={meta.page}
           pageCount={meta.pageCount}
           pageSize={meta.pageSize}

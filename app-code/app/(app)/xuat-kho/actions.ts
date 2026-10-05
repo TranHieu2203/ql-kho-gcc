@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { requireUser, assertCanAccessWarehouse } from '@/lib/auth/lucia';
-import { createInboundOutbound, OverstockError, simulateBackdateOutbound, computeStock } from '@/lib/domain/receipts';
+import { createInboundOutbound, OverstockError, simulateBackdateOutbound, simulateReceiptReplace, diffReceiptStock } from '@/lib/domain/receipts';
 import { formatDate } from '@/lib/utils';
 import { audit } from '@/lib/security/audit';
 
@@ -142,62 +142,34 @@ export async function updateOutboundReceipt(receiptId: string, payload: unknown)
   }
 
   const newDate = new Date(parsed.data.date);
+  if (Number.isNaN(newDate.getTime())) return { error: 'Ngày không hợp lệ.' };
 
-  // Mô phỏng backdate: tạm thời "xoá" delta cũ rồi simulate phiếu mới
-  // Cách đơn giản & đúng: tính tồn ngay-trước-khi-replace, kiểm tra phiếu mới có gây âm không.
-  // - Với cùng (warehouseId, productId, ngày) → quy đổi: tồn-effective = computeStock - oldDelta
-  // - Sau đó simulateBackdateOutbound trên virtual stock này.
-  // Trong thực tế đơn giản hơn: chạy 1 lần block-check trên (warehouse hiện tại) sau khi đảo movements cũ.
-
-  if (!parsed.data.forceBackdate) {
-    // Build effective movements: real - this receipt's old movements
-    const oldDeltaByProduct = new Map<string, number>();
-    for (const m of original.movements) {
-      const key = `${m.warehouseId}|${m.productId}`;
-      oldDeltaByProduct.set(key, (oldDeltaByProduct.get(key) ?? 0) + m.qtyDelta);
-    }
-
-    // Effective check: cho từng line mới, tính tồn = stock_hiện_tại - old_delta_cùng_pp_cùng_kho - new_qty
-    const issues: { sku: string; productName: string; firstNegativeDate: Date; minStock: number }[] = [];
-
-    for (const ln of parsed.data.lines) {
-      const cur = await computeStock(prisma, parsed.data.warehouseId, ln.productId);
-      const k = `${parsed.data.warehouseId}|${ln.productId}`;
-      const adjBack = oldDeltaByProduct.get(k) ?? 0; // âm vì OUTBOUND cũ
-      // Khôi phục tồn (trừ old delta vì delta âm → cộng ngược)
-      const effectiveStock = cur - adjBack;
-      if (effectiveStock - ln.quantity < 0) {
-        const p = await prisma.product.findUnique({ where: { id: ln.productId } });
-        issues.push({
-          sku: p?.sku ?? ln.productId,
-          productName: p?.fullName ?? '',
-          firstNegativeDate: newDate,
-          minStock: effectiveStock - ln.quantity
-        });
-      }
-    }
-
-    if (issues.length > 0) {
-      const policy = await getOverstockPolicy();
-      if (policy === 'block' && !parsed.data.forceOverstock) {
-        if (user.role !== 'ADMIN') {
-          return {
-            error:
-              `Sửa phiếu sẽ làm tồn âm:\n` +
-              issues.map((i) => `• ${i.sku}: âm xuống ${i.minStock}`).join('\n') +
-              '\nĐổi chính sách sang "Cảnh báo" trong Cấu hình hoặc tăng tồn trước.'
-          };
-        }
+  // Mô phỏng toàn bộ timeline: movement thật − movement cũ của phiếu + movement mới.
+  // Bắt được cả trường hợp lùi ngày xuất về trước ngày nhập, hay đổi kho.
+  const issues = await simulateReceiptReplace({
+    receiptId,
+    warehouseId: parsed.data.warehouseId,
+    date: newDate,
+    sign: -1,
+    lines: parsed.data.lines
+  });
+  if (issues.length > 0) {
+    const policy = await getOverstockPolicy();
+    if (policy === 'block') {
+      const list = issues.map((i) => `• ${i.sku}: âm xuống ${i.minStock} (từ ${formatDate(i.firstNegativeDate)})`).join('\n');
+      if (user.role !== 'ADMIN') {
         return {
-          backdateWarning:
-            `Sửa phiếu sẽ làm tồn ÂM:\n` +
-            issues.map((i) => `• ${i.sku}: âm xuống ${i.minStock}`).join('\n') +
-            '\nBạn là quản trị viên — vẫn lưu?'
+          error: `Sửa phiếu sẽ làm tồn âm:\n${list}\nĐổi chính sách sang "Cảnh báo" trong Cấu hình hoặc tăng tồn trước.`
         };
       }
-      // warn mode hoặc admin force: cho phép tiếp tục (sẽ lưu warning vào audit)
+      if (!parsed.data.forceBackdate && !parsed.data.forceOverstock) {
+        return { backdateWarning: `Sửa phiếu sẽ làm tồn ÂM:\n${list}\nBạn là quản trị viên — vẫn lưu?` };
+      }
     }
+    // warn mode hoặc admin xác nhận: cho phép tiếp tục, ghi cảnh báo vào audit
   }
+
+  const stockDiff = diffReceiptStock(original.movements, { warehouseId: parsed.data.warehouseId, sign: -1, lines: parsed.data.lines });
 
   // Snapshot trước khi sửa (for audit)
   const before = {
@@ -273,7 +245,9 @@ export async function updateOutboundReceipt(receiptId: string, payload: unknown)
       customerAddress: parsed.data.customerAddress,
       customerPhone: parsed.data.customerPhone,
       note: parsed.data.note,
-      lines: parsed.data.lines
+      lines: parsed.data.lines,
+      stockDiff,
+      ...(issues.length > 0 ? { negativeStockOverride: issues } : {})
     }
   });
 

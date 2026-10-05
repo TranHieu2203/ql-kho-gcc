@@ -265,3 +265,86 @@ export async function confirmTransferArrival(receiptId: string) {
     });
   });
 }
+
+export type StockIssue = { sku: string; productName: string; warehouseId: string; firstNegativeDate: Date; minStock: number };
+
+/**
+ * Mô phỏng việc THAY THẾ toàn bộ movement của 1 phiếu (dùng khi sửa phiếu).
+ * Với mỗi cặp (kho, sản phẩm) bị ảnh hưởng (cũ ∪ mới), dựng lại timeline:
+ *   movement thật − movement cũ của phiếu + movement mới,
+ * rồi kiểm tra tồn có bị âm ở bất kỳ thời điểm nào không.
+ *
+ * Chỉ báo lỗi khi việc sửa làm tình hình TỆ HƠN (min mới < 0 và < min cũ),
+ * để không chặn sửa phiếu vì dữ liệu đã âm sẵn từ trước.
+ * Cùng một ngày: cộng vào trước, trừ ra sau (tồn tính theo ngày).
+ */
+export async function simulateReceiptReplace(input: {
+  receiptId: string;
+  warehouseId: string;
+  date: Date;
+  sign: 1 | -1;
+  lines: LineInput[];
+}): Promise<StockIssue[]> {
+  const old = await prisma.stockMovement.findMany({ where: { sourceId: input.receiptId } });
+  const pairs = new Map<string, { warehouseId: string; productId: string }>();
+  for (const m of old) pairs.set(`${m.warehouseId}|${m.productId}`, { warehouseId: m.warehouseId, productId: m.productId });
+  for (const ln of input.lines) pairs.set(`${input.warehouseId}|${ln.productId}`, { warehouseId: input.warehouseId, productId: ln.productId });
+
+  const walk = (events: { at: Date; delta: number }[]) => {
+    events.sort((a, b) => a.at.getTime() - b.at.getTime() || b.delta - a.delta);
+    let running = 0;
+    let min = 0;
+    let firstNegativeDate: Date | null = null;
+    for (const ev of events) {
+      running += ev.delta;
+      if (running < min) min = running;
+      if (running < 0 && firstNegativeDate === null) firstNegativeDate = ev.at;
+    }
+    return { min, firstNegativeDate };
+  };
+
+  const issues: StockIssue[] = [];
+  for (const { warehouseId, productId } of Array.from(pairs.values())) {
+    const all = await prisma.stockMovement.findMany({ where: { warehouseId, productId } });
+    const before = walk(all.map((m) => ({ at: m.occurredAt, delta: m.qtyDelta })));
+    const after = walk([
+      ...all.filter((m) => m.sourceId !== input.receiptId).map((m) => ({ at: m.occurredAt, delta: m.qtyDelta })),
+      ...(warehouseId === input.warehouseId
+        ? input.lines.filter((l) => l.productId === productId).map((l) => ({ at: input.date, delta: l.quantity * input.sign }))
+        : [])
+    ]);
+    if (after.firstNegativeDate && after.min < before.min) {
+      const p = await prisma.product.findUnique({ where: { id: productId } });
+      issues.push({
+        sku: p?.sku ?? productId,
+        productName: p?.fullName ?? '',
+        warehouseId,
+        firstNegativeDate: after.firstNegativeDate,
+        minStock: after.min
+      });
+    }
+  }
+  return issues;
+}
+
+/**
+ * Chênh lệch tồn theo (kho, sản phẩm) giữa movement cũ và movement mới của 1 phiếu.
+ * Dùng để ghi log "cân đối kho" khi sửa phiếu. Chỉ trả về cặp có thay đổi.
+ */
+export function diffReceiptStock(
+  oldMovements: { warehouseId: string; productId: string; qtyDelta: number }[],
+  next: { warehouseId: string; sign: 1 | -1; lines: LineInput[] }
+): { warehouseId: string; productId: string; before: number; after: number; change: number }[] {
+  const acc = new Map<string, { warehouseId: string; productId: string; before: number; after: number }>();
+  const get = (warehouseId: string, productId: string) => {
+    const k = `${warehouseId}|${productId}`;
+    let v = acc.get(k);
+    if (!v) acc.set(k, (v = { warehouseId, productId, before: 0, after: 0 }));
+    return v;
+  };
+  for (const m of oldMovements) get(m.warehouseId, m.productId).before += m.qtyDelta;
+  for (const l of next.lines) get(next.warehouseId, l.productId).after += l.quantity * next.sign;
+  return Array.from(acc.values())
+    .map((v) => ({ ...v, change: v.after - v.before }))
+    .filter((v) => v.change !== 0);
+}

@@ -9,19 +9,23 @@ import { formatDate, formatNumber } from '@/lib/utils';
 import { validateRequest, getUserWarehouses } from '@/lib/auth/lucia';
 import { Pagination } from '@/components/ui/pagination';
 import { parsePaging, pageMeta } from '@/lib/pagination';
+import { buildReceiptListWhere, receiptFilterParams, countActiveFilters, type ReceiptListSearchParams } from '@/lib/receipt-list-filters';
+import { ReceiptListFilters } from '@/components/receipts/receipt-list-filters';
 
 export const dynamic = 'force-dynamic';
 
-type SearchParams = { page?: string; pageSize?: string };
+type SearchParams = ReceiptListSearchParams;
 
 export default async function OutboundListPage({ searchParams }: { searchParams: SearchParams }) {
   const { user } = await validateRequest();
   if (!user) redirect('/login');
   const myWh = user.role === 'ADMIN'
-    ? await prisma.warehouse.findMany({ select: { id: true } })
-    : (await getUserWarehouses(user.id)).map((w) => ({ id: w.id }));
+    ? await prisma.warehouse.findMany({ select: { id: true, code: true, name: true }, orderBy: { code: 'asc' } })
+    : await getUserWarehouses(user.id);
 
-  const where = { type: 'OUTBOUND', warehouseId: { in: myWh.map((w) => w.id) } };
+  const where = buildReceiptListWhere('OUTBOUND', searchParams, myWh.map((w) => w.id));
+  const filterParams = receiptFilterParams(searchParams);
+  const activeCount = countActiveFilters(filterParams);
   const paging = parsePaging(searchParams);
   const total = await prisma.receipt.count({ where });
   const meta = pageMeta(total, paging);
@@ -50,8 +54,17 @@ export default async function OutboundListPage({ searchParams }: { searchParams:
         </Button>
       </div>
       <Card className="flex flex-col md:flex-1 md:overflow-hidden md:min-h-[320px]">
+        <ReceiptListFilters
+          basePath="/xuat-kho"
+          searchParams={searchParams}
+          warehouses={myWh}
+          partnerLabel="Mã phiếu / Khách hàng"
+          activeCount={activeCount}
+        />
         {receipts.length === 0 ? (
-          <div className="text-center py-12 text-sm text-muted-foreground">Chưa có phiếu xuất nào.</div>
+          <div className="text-center py-12 px-4 text-sm text-muted-foreground">
+            {activeCount > 0 ? 'Không có phiếu xuất phù hợp. Thử bỏ bớt điều kiện lọc.' : 'Chưa có phiếu xuất nào.'}
+          </div>
         ) : (
           <Table containerClassName="md:flex-1 md:min-h-0">
             <TableHeader>
@@ -84,6 +97,7 @@ export default async function OutboundListPage({ searchParams }: { searchParams:
 
         <Pagination
           basePath="/xuat-kho"
+          params={filterParams}
           page={meta.page}
           pageCount={meta.pageCount}
           pageSize={meta.pageSize}
