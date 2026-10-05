@@ -10,6 +10,7 @@ import { formatNumber } from '@/lib/utils';
 import { CheckCircle2, AlertTriangle, XCircle, RotateCcw, Search } from 'lucide-react';
 import { Pagination } from '@/components/ui/pagination';
 import { parsePaging, pageMeta } from '@/lib/pagination';
+import { CollapsibleFilters } from '@/components/ui/collapsible-filters';
 
 export const dynamic = 'force-dynamic';
 
@@ -148,6 +149,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
       </div>
 
       <Card className="flex flex-col md:flex-1 md:overflow-hidden md:min-h-[320px]">
+        <CollapsibleFilters activeCount={activeCount}>
         <form action="/ton-kho" className="p-4 border-b flex-shrink-0 space-y-3">
           {searchParams.pageSize && <input type="hidden" name="pageSize" value={searchParams.pageSize} />}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -202,6 +204,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
             <Button type="submit"><Search className="w-4 h-4" />Áp dụng lọc</Button>
           </div>
         </form>
+        </CollapsibleFilters>
         <Table containerClassName="md:flex-1 md:min-h-0">
           <TableHeader>
             <TableRow>

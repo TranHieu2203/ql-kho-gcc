@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { RotateCcw, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ReceiptListSearchParams } from '@/lib/receipt-list-filters';
+import { CollapsibleFilters } from '@/components/ui/collapsible-filters';
 
 const fieldCls = 'h-9 w-full rounded-md border bg-background px-3 text-sm';
 const labelCls = 'text-xs font-medium text-muted-foreground';
@@ -21,6 +22,7 @@ type Props = {
  */
 export function ReceiptListFilters({ basePath, searchParams, warehouses, partnerLabel, activeCount }: Props) {
   return (
+    <CollapsibleFilters activeCount={activeCount}>
     <form action={basePath} className="p-4 border-b flex-shrink-0 space-y-3">
       {searchParams.pageSize && <input type="hidden" name="pageSize" value={searchParams.pageSize} />}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -59,5 +61,6 @@ export function ReceiptListFilters({ basePath, searchParams, warehouses, partner
         <Button type="submit"><Search className="w-4 h-4" />Áp dụng lọc</Button>
       </div>
     </form>
+    </CollapsibleFilters>
   );
 }

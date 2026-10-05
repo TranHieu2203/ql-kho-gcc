@@ -10,6 +10,7 @@ import { formatNumber } from '@/lib/utils';
 import { runNxtReport, type NxtFilters } from '@/lib/domain/nxt-report';
 import { Pagination } from '@/components/ui/pagination';
 import { parsePaging, pageMeta } from '@/lib/pagination';
+import { CollapsibleFilters } from '@/components/ui/collapsible-filters';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,6 +100,7 @@ export default async function NxtReportPage({ searchParams }: { searchParams: Se
       </div>
 
       <Card className="flex flex-col md:flex-1 md:overflow-hidden md:min-h-[560px]">
+        <CollapsibleFilters activeCount={activeCount}>
         <form className="p-4 space-y-4 border-b flex-shrink-0 overflow-y-auto max-h-[45%]">
           {/* Row 1: kỳ + kho */}
           <div className="grid md:grid-cols-4 gap-3">
@@ -234,6 +236,7 @@ export default async function NxtReportPage({ searchParams }: { searchParams: Se
             <Button type="submit">Áp dụng lọc</Button>
           </div>
         </form>
+        </CollapsibleFilters>
 
         <div className="grid grid-cols-2 md:grid-cols-4 divide-x border-b text-sm flex-shrink-0">
           <div className="p-4">
